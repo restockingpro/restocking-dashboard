@@ -1087,3 +1087,145 @@ body {
     align-items:flex-end;
   }
 }
+/* ===========================
+   RESTOCK ALERTS – FILTER BAR (premium glass)
+   =========================== */
+
+/* container da barra */
+.filter-bar,
+.filters-bar,
+.alerts-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  margin: 14px 0 18px;
+  border-radius: 14px;
+
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+}
+
+/* cada grupinho label+select */
+.filter-group,
+.filters-group,
+.alerts-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: rgba(255,255,255,0.85);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* selects premium (tirar cara de nativo) */
+.filter-bar select,
+.filters-bar select,
+.alerts-filter-bar select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  height: 36px;
+  min-width: 132px;
+  padding: 0 34px 0 12px;
+  border-radius: 10px;
+
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  color: #e9e9ee;
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 4px 14px rgba(0,0,0,0.35);
+
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: 0.18s ease;
+  position: relative;
+
+  /* setinha custom */
+  background-image:
+    radial-gradient(circle at 90% 50%, rgba(255,255,255,0.75) 0 2px, transparent 3px),
+    radial-gradient(circle at 86% 50%, rgba(255,255,255,0.55) 0 2px, transparent 3px),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  background-repeat: no-repeat;
+  background-size: 18px 18px, 18px 18px, auto;
+  background-position: right 10px center, right 16px center, center;
+}
+
+.filter-bar select:hover,
+.filters-bar select:hover,
+.alerts-filter-bar select:hover {
+  border-color: rgba(168,85,247,0.65);
+  box-shadow:
+    0 0 0 3px rgba(168,85,247,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 6px 18px rgba(0,0,0,0.45);
+  transform: translateY(-1px);
+}
+
+.filter-bar select:focus,
+.filters-bar select:focus,
+.alerts-filter-bar select:focus {
+  border-color: rgba(168,85,247,0.9);
+  box-shadow:
+    0 0 0 3px rgba(168,85,247,0.18),
+    0 8px 22px rgba(0,0,0,0.5);
+}
+
+/* botão Clear filters no mesmo padrão */
+.clear-filters,
+.filter-clear-btn,
+.filters-clear-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.9);
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: 0.18s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+.clear-filters:hover,
+.filter-clear-btn:hover,
+.filters-clear-btn:hover {
+  border-color: rgba(168,85,247,0.75);
+  background: rgba(168,85,247,0.12);
+  transform: translateY(-1px);
+}
+
+/* se tiver botão Refresh alinhado na barra */
+.filter-bar .refresh-btn,
+.filters-bar .refresh-btn,
+.alerts-filter-bar .refresh-btn {
+  margin-left: auto;
+}
+
+/* responsivo: quando quebrar linha, mantém bonito */
+@media (max-width: 900px) {
+  .filter-bar,
+  .filters-bar,
+  .alerts-filter-bar {
+    gap: 10px;
+  }
+  .filter-bar select,
+  .filters-bar select,
+  .alerts-filter-bar select {
+    min-width: 120px;
+  }
+}
+

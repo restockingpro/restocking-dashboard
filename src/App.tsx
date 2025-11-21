@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import "./App.css";
 import { createClient } from "@supabase/supabase-js";
 
-type Page = "overview" | "links";
+type Page = "overview" | "links" | "alerts";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
 const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
@@ -42,7 +42,6 @@ const AMAZON_DEPARTMENTS = [
 ] as const;
 
 /* --------- SMALL COMPONENTS --------- */
-
 type StatCardProps = {
   label: string;
   value: string;
@@ -136,7 +135,6 @@ function RestockTable() {
 }
 
 /* -------- SIDEBAR / TOPBAR -------- */
-
 type SidebarProps = {
   currentPage: Page;
   onChangePage: (page: Page) => void;
@@ -148,7 +146,7 @@ const navItems: {
 }[] = [
   { label: "Overview", key: "overview" },
   { label: "Supplier Links", key: "links" },
-  { label: "Restock Alerts", key: "history" },
+  { label: "Restock Alerts", key: "alerts" }, // ✅ agora é página real
   { label: "History", key: "history" },
   { label: "Settings", key: "settings" },
   { label: "Billing", key: "billing" },
@@ -166,7 +164,8 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
       </div>
       <nav className="nav">
         {navItems.map((item) => {
-          const isRealPage = item.key === "overview" || item.key === "links";
+          const isRealPage =
+            item.key === "overview" || item.key === "links" || item.key === "alerts";
           const isActive = currentPage === item.key;
           return (
             <button
@@ -192,7 +191,12 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
 type TopbarProps = { currentPage: Page };
 
 function Topbar({ currentPage }: TopbarProps) {
-  const label = currentPage === "overview" ? "Overview" : "Supplier Links";
+  const label =
+    currentPage === "overview"
+      ? "Overview"
+      : currentPage === "links"
+      ? "Supplier Links"
+      : "Restock Alerts";
 
   return (
     <header className="topbar">
@@ -208,7 +212,6 @@ function Topbar({ currentPage }: TopbarProps) {
 }
 
 /* -------- OVERVIEW SECTION -------- */
-
 function OverviewSection() {
   return (
     <>
@@ -237,7 +240,6 @@ function OverviewSection() {
 }
 
 /* -------- SUPPLIER LINKS + MODAL -------- */
-
 type SupplierLink = {
   id?: string;
   supplier: string;
@@ -460,7 +462,6 @@ function SupplierLinksSection() {
   const [editingRow, setEditingRow] = useState<SupplierLink | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // filtros
   const [filterDepartment, setFilterDepartment] = useState<string>("All");
   const [filterPriority, setFilterPriority] = useState<string>("All");
   const [filterStatus, setFilterStatus] = useState<string>("All");
@@ -506,15 +507,13 @@ function SupplierLinksSection() {
     return "badge badge-normal";
   };
 
-  // data filtrada
   const filteredData = useMemo(() => {
     return data.filter((row) => {
       const okDept =
         filterDepartment === "All" || row.label === filterDepartment;
       const okPriority =
         filterPriority === "All" || row.priority === filterPriority;
-      const okStatus =
-        filterStatus === "All" || row.status === filterStatus;
+      const okStatus = filterStatus === "All" || row.status === filterStatus;
       return okDept && okPriority && okStatus;
     });
   }, [data, filterDepartment, filterPriority, filterStatus]);
@@ -532,9 +531,7 @@ function SupplierLinksSection() {
       links_count: linksNumber,
     };
 
-    const { error } = await supabase
-      .from("supplier_links")
-      .insert(insertPayload);
+    const { error } = await supabase.from("supplier_links").insert(insertPayload);
 
     if (error) {
       console.error("INSERT ERROR:", error);
@@ -630,13 +627,12 @@ function SupplierLinksSection() {
         </div>
         <div className="toolbar-right">
           <button className="btn-secondary">Import from CSV</button>
-          <button className="btn-primary" type="button" onClick={openAddModal}>
+          <button className="btn-primary-big" type="button" onClick={openAddModal}>
             + Add new link
           </button>
         </div>
       </div>
 
-      {/* ✅ FILTER BAR */}
       <div className="filter-bar">
         <div className="filter-item">
           <label>Department</label>
@@ -756,13 +752,7 @@ function SupplierLinksSection() {
                   </td>
 
                   <td className="right">
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <button
                         onClick={() => openEditModal(row)}
                         title="Edit"
@@ -825,8 +815,331 @@ function SupplierLinksSection() {
   );
 }
 
-/* -------- ROOT APP -------- */
+/* -------- RESTOCK ALERTS SECTION -------- */
+type RestockAlert = {
+  id?: string;
+  created_at?: string;
 
+  supplier: string;
+  product_name: string;
+  department?: string;
+  url?: string;
+
+  change_type: "restock" | "price_drop" | "oos_risk";
+  old_price?: number | null;
+  new_price?: number | null;
+  old_qty?: number | null;
+  new_qty?: number | null;
+
+  priority: "High" | "Medium" | "Low";
+  status: "Hot" | "Stable" | "Watch";
+
+  is_read?: boolean;
+};
+
+function RestockAlertsSection() {
+  const [alerts, setAlerts] = useState<RestockAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [filterDepartment, setFilterDepartment] = useState("All");
+  const [filterPriority, setFilterPriority] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterChange, setFilterChange] = useState("All");
+
+  async function fetchAlerts() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("restock_alerts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Fetch restock_alerts error:", error.message);
+      setAlerts([]);
+    } else {
+      setAlerts((data ?? []) as any);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  const clearFilters = () => {
+    setFilterDepartment("All");
+    setFilterPriority("All");
+    setFilterStatus("All");
+    setFilterChange("All");
+  };
+
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((a) => {
+      const okDept = filterDepartment === "All" || a.department === filterDepartment;
+      const okPri = filterPriority === "All" || a.priority === filterPriority;
+      const okSt = filterStatus === "All" || a.status === filterStatus;
+      const okCh = filterChange === "All" || a.change_type === filterChange;
+      return okDept && okPri && okSt && okCh;
+    });
+  }, [alerts, filterDepartment, filterPriority, filterStatus, filterChange]);
+
+  const markRead = async (id?: string, is_read?: boolean) => {
+    if (!id) return;
+    const { error } = await supabase
+      .from("restock_alerts")
+      .update({ is_read: !is_read })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setAlerts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, is_read: !is_read } : a))
+    );
+  };
+
+  const deleteAlert = async (id?: string) => {
+    if (!id) return;
+    const ok = window.confirm("Delete this alert?");
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("restock_alerts")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const timeAgo = (iso?: string) => {
+    if (!iso) return "-";
+    const d = new Date(iso).getTime();
+    const diff = Date.now() - d;
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return "just now";
+    if (min < 60) return `${min}m ago`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h}h ago`;
+    const days = Math.floor(h / 24);
+    return `${days}d ago`;
+  };
+
+  const changeLabel = (t: RestockAlert["change_type"]) => {
+    if (t === "price_drop") return "Price drop";
+    if (t === "oos_risk") return "OOS risk";
+    return "Restock";
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>Restock Alerts</h1>
+        <p>
+          Every restock, price drop or OOS risk detected by your monitored URLs.
+        </p>
+      </div>
+
+      <div className="alerts-toolbar">
+        <div className="left">
+          <h2>Latest Alerts</h2>
+          <p>
+            {filteredAlerts.length} of {alerts.length} alerts shown.
+          </p>
+        </div>
+        <div className="right">
+          <button className="btn-secondary" onClick={fetchAlerts}>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div className="alerts-filter-bar">
+        <div className="alerts-filter-item">
+          <label>Department</label>
+          <select
+            value={filterDepartment}
+            onChange={(e) => setFilterDepartment(e.target.value)}
+          >
+            <option value="All">All</option>
+            {AMAZON_DEPARTMENTS.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="alerts-filter-item">
+          <label>Priority</label>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+          >
+            <option value="All">All</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+
+        <div className="alerts-filter-item">
+          <label>Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="All">All</option>
+            <option value="Hot">Hot</option>
+            <option value="Stable">Stable</option>
+            <option value="Watch">Watch</option>
+          </select>
+        </div>
+
+        <div className="alerts-filter-item">
+          <label>Change</label>
+          <select
+            value={filterChange}
+            onChange={(e) => setFilterChange(e.target.value)}
+          >
+            <option value="All">All</option>
+            <option value="restock">Restock</option>
+            <option value="price_drop">Price drop</option>
+            <option value="oos_risk">OOS risk</option>
+          </select>
+        </div>
+
+        <button className="btn-ghost" onClick={clearFilters}>
+          Clear filters
+        </button>
+      </div>
+
+      <div className="alerts-table-wrapper">
+        <div className="alerts-table-header">
+          <div>
+            <h2>All Alerts</h2>
+            <p>Sorted by most recent first.</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 20 }}>Loading...</div>
+        ) : filteredAlerts.length === 0 ? (
+          <div style={{ padding: 20, opacity: 0.7 }}>
+            No alerts match these filters.
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Supplier</th>
+                <th>Product</th>
+                <th>Change</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>When</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th className="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAlerts.map((a, idx) => (
+                <tr
+                  key={a.id ?? idx}
+                  className={!a.is_read ? "alert-row-unread" : undefined}
+                >
+                  <td>{a.supplier}</td>
+                  <td>
+                    {a.url ? (
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="alert-product-link"
+                      >
+                        {a.product_name}
+                      </a>
+                    ) : (
+                      a.product_name
+                    )}
+                  </td>
+
+                  <td>
+                    <span className={`alert-change ${a.change_type === "restock"
+                      ? "restocks"
+                      : a.change_type === "price_drop"
+                      ? "price-drop"
+                      : "oos-risk"}`}>
+                      {changeLabel(a.change_type)}
+                    </span>
+                  </td>
+
+                  <td>
+                    {a.old_price != null || a.new_price != null
+                      ? `${a.old_price ?? "-"} → ${a.new_price ?? "-"}`
+                      : "-"}
+                  </td>
+
+                  <td>
+                    {a.old_qty != null || a.new_qty != null
+                      ? `${a.old_qty ?? "-"} → ${a.new_qty ?? "-"}`
+                      : "-"}
+                  </td>
+
+                  <td>{timeAgo(a.created_at)}</td>
+
+                  <td>
+                    <span className={`alert-priority ${a.priority.toLowerCase()}`}>
+                      {a.priority}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span className={
+                      a.status === "Hot"
+                        ? "badge badge-hot"
+                        : a.status === "Watch"
+                        ? "badge badge-watch"
+                        : "badge badge-normal"
+                    }>
+                      {a.status}
+                    </span>
+                  </td>
+
+                  <td className="right">
+                    <div className="alert-actions">
+                      <button
+                        className="alert-action-btn"
+                        onClick={() => markRead(a.id, a.is_read)}
+                        title="Mark read/unread"
+                      >
+                        {a.is_read ? "✅ Read" : "🟣 Unread"}
+                      </button>
+                      <button
+                        className="alert-action-btn"
+                        onClick={() => deleteAlert(a.id)}
+                        title="Delete"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* -------- ROOT APP -------- */
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
 
@@ -838,6 +1151,7 @@ export default function App() {
         <main className="main-content">
           {page === "overview" && <OverviewSection />}
           {page === "links" && <SupplierLinksSection />}
+          {page === "alerts" && <RestockAlertsSection />}
         </main>
       </div>
     </div>

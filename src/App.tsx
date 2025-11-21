@@ -6,9 +6,7 @@ type Page = "overview" | "links" | "alerts";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
 const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
-const supabaseAnonKey =
-  "YOUR_ANON_KEY_HERE"; // <-- deixa sua key aqui igual estava antes
-
+const supabaseAnonKey = "YOUR_ANON_KEY_HERE"; // mantém a sua key
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /* ---------- TYPES ---------- */
@@ -16,6 +14,7 @@ type RestockEvent = {
   id: string;
   supplier_name: string | null;
   product_name: string | null;
+  sku: string | null;
   url: string;
   detected_at: string; // ISO
   price: number | null;
@@ -35,8 +34,10 @@ type AlertRow = {
   id: string;
   url: string;
   supplier_name: string | null;
+  product_name: string | null;
   status: "open" | "resolved" | "muted";
   reason: string | null;
+  change_type: string | null; // ex: restock, price_drop, oos_risk...
   created_at: string;
 };
 
@@ -60,7 +61,7 @@ const timeAgo = (iso: string) => {
   return `${d}d ago`;
 };
 
-const mpBadge = (mp: RestockEvent["marketplace"]) => {
+const mpLabel = (mp: RestockEvent["marketplace"]) => {
   switch (mp) {
     case "amazon":
       return "Amazon";
@@ -73,77 +74,22 @@ const mpBadge = (mp: RestockEvent["marketplace"]) => {
   }
 };
 
-/* ---------- COMPONENTS ---------- */
-function StatCard({
-  label,
-  value,
-  sub,
-  delta,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  delta?: number; // percent change
-}) {
-  const isUp = (delta ?? 0) >= 0;
-  const deltaText =
-    delta == null ? "" : `${isUp ? "+" : ""}${delta.toFixed(1)}%`;
-
-  return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-sub">
-        {sub}
-        {delta != null && (
-          <span className={`delta ${isUp ? "up" : "down"}`}>
-            {deltaText}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MiniFeedItem({ e }: { e: RestockEvent }) {
-  return (
-    <div className="feed-item">
-      <div className="feed-left">
-        <div className="feed-title">
-          {e.product_name || "Unnamed product"}
-        </div>
-        <div className="feed-meta">
-          <span className="badge">{mpBadge(e.marketplace)}</span>
-          <span className="muted">
-            {e.supplier_name || "Unknown supplier"}
-          </span>
-          <span className="muted">• {timeAgo(e.detected_at)}</span>
-        </div>
-        <a href={e.url} target="_blank" rel="noreferrer" className="feed-link">
-          {e.url}
-        </a>
-      </div>
-
-      <div className="feed-right">
-        <div className="feed-price">
-          {e.price != null ? `$${e.price.toFixed(2)}` : "--"}
-        </div>
-        <div className="feed-date">{fmtDate(e.detected_at)}</div>
-      </div>
-    </div>
-  );
-}
+const restockStatusBadge = (detectedAt: string) => {
+  const hours = (Date.now() - new Date(detectedAt).getTime()) / 36e5;
+  if (hours <= 6) return { text: "Hot", cls: "badge badge-hot" };
+  if (hours <= 48) return { text: "Watch", cls: "badge badge-watch" };
+  return { text: "Normal", cls: "badge badge-normal" };
+};
 
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
 
-  // data
   const [restocks, setRestocks] = useState<RestockEvent[]>([]);
   const [links, setLinks] = useState<SupplierLink[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
 
-  // ui state
-  const [mpFilter, setMpFilter] = useState<
+  // filtros globais
+  const [marketFilter, setMarketFilter] = useState<
     "all" | "amazon" | "walmart" | "ebay" | "other"
   >("all");
   const [search, setSearch] = useState("");
@@ -151,7 +97,7 @@ export default function App() {
 
   /* ---------- FETCH ---------- */
   async function loadAll() {
-    // ⚠️ AJUSTE AQUI se seus nomes de tabela forem diferentes
+    // se seus nomes forem outros, troca aqui
     const restocksQ = supabase
       .from("restock_events")
       .select("*")
@@ -171,6 +117,7 @@ export default function App() {
       .limit(200);
 
     const [r, l, a] = await Promise.all([restocksQ, linksQ, alertsQ]);
+
     if (!r.error) setRestocks(r.data as any);
     if (!l.error) setLinks(l.data as any);
     if (!a.error) setAlerts(a.data as any);
@@ -197,33 +144,47 @@ export default function App() {
     };
   }, []);
 
-  /* ---------- FILTERS ---------- */
-  const filteredRestocks = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  /* ---------- FILTERED DATA ---------- */
+  const q = search.trim().toLowerCase();
 
-    return restocks.filter((e) => {
-      const mpOk = mpFilter === "all" || e.marketplace === mpFilter;
+  const filteredRestocks = useMemo(() => {
+    return restocks.filter((r) => {
+      const mpOk = marketFilter === "all" || r.marketplace === marketFilter;
       const searchOk =
         !q ||
-        e.url.toLowerCase().includes(q) ||
-        (e.product_name || "").toLowerCase().includes(q) ||
-        (e.supplier_name || "").toLowerCase().includes(q);
+        r.url.toLowerCase().includes(q) ||
+        (r.product_name || "").toLowerCase().includes(q) ||
+        (r.supplier_name || "").toLowerCase().includes(q) ||
+        (r.sku || "").toLowerCase().includes(q);
       return mpOk && searchOk;
     });
-  }, [restocks, mpFilter, search]);
+  }, [restocks, marketFilter, q]);
 
   const filteredLinks = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return links.filter((l) => {
-      const mpOk = mpFilter === "all" || l.marketplace === mpFilter;
+      const mpOk = marketFilter === "all" || l.marketplace === marketFilter;
+      const activeOk = !activeOnly || l.is_active;
       const searchOk =
         !q ||
         l.url.toLowerCase().includes(q) ||
         l.supplier_name.toLowerCase().includes(q);
-      const activeOk = !activeOnly || l.is_active;
-      return mpOk && searchOk && activeOk;
+      return mpOk && activeOk && searchOk;
     });
-  }, [links, mpFilter, search, activeOnly]);
+  }, [links, marketFilter, activeOnly, q]);
+
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((a) => {
+      const mpOk =
+        marketFilter === "all" ||
+        (a.url || "").toLowerCase().includes(marketFilter);
+      const searchOk =
+        !q ||
+        (a.url || "").toLowerCase().includes(q) ||
+        (a.product_name || "").toLowerCase().includes(q) ||
+        (a.supplier_name || "").toLowerCase().includes(q);
+      return mpOk && searchOk;
+    });
+  }, [alerts, marketFilter, q]);
 
   /* ---------- KPIs w/ TREND ---------- */
   const kpis = useMemo(() => {
@@ -248,272 +209,362 @@ export default function App() {
       return now - t > 7 * dayMs && now - t <= 14 * dayMs;
     }).length;
 
-    const openAlerts = alerts.filter((a) => a.status === "open").length;
+    const activeUrls = links.filter((l) => l.is_active).length;
+    const activeSuppliers = new Set(
+      links.filter((l) => l.is_active).map((l) => l.supplier_name)
+    ).size;
 
-    const delta = (cur: number, prev: number) => {
+    const alertsSent = alerts.length;
+
+    const deltaPct = (cur: number, prev: number) => {
       if (prev === 0 && cur === 0) return 0;
       if (prev === 0) return 100;
       return ((cur - prev) / prev) * 100;
     };
 
     return {
-      last24,
-      last24Delta: delta(last24, prev24),
+      activeUrls,
       last7,
-      last7Delta: delta(last7, prev7),
-      activeLinks: links.filter((l) => l.is_active).length,
-      openAlerts,
+      last7Delta: deltaPct(last7, prev7),
+      activeSuppliers,
+      alertsSent,
+      last24,
+      last24Delta: deltaPct(last24, prev24),
     };
   }, [restocks, links, alerts]);
 
-  /* ---------- UI ---------- */
+  const Trend = ({ delta }: { delta: number }) => {
+    const up = delta >= 0;
+    return (
+      <span className={`kpi-trend ${up ? "up" : "down"}`}>
+        {up ? "+" : ""}
+        {delta.toFixed(1)}%
+      </span>
+    );
+  };
+
   return (
-    <div className="app-shell">
+    <div className="app-root">
+      {/* SIDEBAR */}
       <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-logo">👑</div>
-          <div className="brand-name">RestocKING</div>
-          <div className="brand-sub">Restock Radar</div>
+        <div className="logo-block">
+          <div className="logo-icon">🦍</div>
+          <div>
+            <div className="logo-title">RESTOCKING</div>
+            <div className="logo-sub">Restock before everyone else.</div>
+          </div>
         </div>
 
-        <nav className="nav">
+        <div className="nav">
           <button
-            className={`nav-btn ${page === "overview" ? "active" : ""}`}
+            className={`nav-item ${page === "overview" ? "active" : ""}`}
             onClick={() => setPage("overview")}
           >
             Overview
           </button>
           <button
-            className={`nav-btn ${page === "links" ? "active" : ""}`}
+            className={`nav-item ${page === "links" ? "active" : ""}`}
             onClick={() => setPage("links")}
           >
-            Supply Links
+            Supplier Links
           </button>
           <button
-            className={`nav-btn ${page === "alerts" ? "active" : ""}`}
+            className={`nav-item ${page === "alerts" ? "active" : ""}`}
             onClick={() => setPage("alerts")}
           >
-            Alerts
+            Restock Alerts
           </button>
-        </nav>
+        </div>
+
+        <div className="sidebar-footer">Build v2 • realtime on</div>
       </aside>
 
-      <main className="main">
-        {/* FILTER BAR (fica global, coerente) */}
-        <div className="filter-bar">
-          <div className="filter-left">
-            <div className="segmented">
-              {(["all", "amazon", "walmart", "ebay", "other"] as const).map(
-                (x) => (
-                  <button
-                    key={x}
-                    className={`seg-btn ${mpFilter === x ? "on" : ""}`}
-                    onClick={() => setMpFilter(x)}
-                  >
-                    {x === "all"
-                      ? "All"
-                      : x.charAt(0).toUpperCase() + x.slice(1)}
-                  </button>
-                )
-              )}
+      {/* MAIN */}
+      <div className="main-area">
+        <header className="topbar">
+          <div className="breadcrumb">
+            Dashboard / <span>{page === "overview" ? "Overview" : page === "links" ? "Supplier Links" : "Alerts"}</span>
+          </div>
+          <div className="topbar-right">
+            <button className="btn-secondary" onClick={loadAll}>
+              Refresh
+            </button>
+            <div className="avatar">LP</div>
+          </div>
+        </header>
+
+        <div className="main-content">
+          {/* HEADER */}
+          {page === "overview" && (
+            <div className="page-header">
+              <h1>Restock Overview</h1>
+              <p>Monitor supplier restocks, act before everyone else.</p>
+            </div>
+          )}
+          {page === "links" && (
+            <div className="page-header">
+              <h1>Supplier Links</h1>
+              <p>All monitored URLs and suppliers.</p>
+            </div>
+          )}
+          {page === "alerts" && (
+            <div className="page-header">
+              <h1>Restock Alerts</h1>
+              <p>Events that need attention right now.</p>
+            </div>
+          )}
+
+          {/* FILTER BAR (global, igual CSS) */}
+          <div className="filter-bar">
+            <div className="filter-item">
+              <label>Marketplace</label>
+              <select
+                value={marketFilter}
+                onChange={(e) => setMarketFilter(e.target.value as any)}
+              >
+                <option value="all">All</option>
+                <option value="amazon">Amazon</option>
+                <option value="walmart">Walmart</option>
+                <option value="ebay">eBay</option>
+                <option value="other">Other</option>
+              </select>
             </div>
 
             {page === "links" && (
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={activeOnly}
-                  onChange={(e) => setActiveOnly(e.target.checked)}
-                />
-                Active only
-              </label>
+              <div className="filter-item">
+                <label>Status</label>
+                <select
+                  value={activeOnly ? "active" : "all"}
+                  onChange={(e) =>
+                    setActiveOnly(e.target.value === "active")
+                  }
+                >
+                  <option value="active">Active only</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
             )}
-          </div>
 
-          <div className="filter-right">
-            <input
-              className="search"
-              placeholder={
-                page === "links"
-                  ? "Search links, suppliers or URLs..."
-                  : "Search restocks, suppliers or URLs..."
-              }
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <button className="icon-btn" onClick={loadAll} title="Refresh">
-              ↻
+            <div className="filter-item">
+              <label>Search</label>
+              <input
+                style={{ height: 36, borderRadius: 10, padding: "0 10px" }}
+                placeholder="supplier, SKU, product or URL..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <button className="btn-ghost" onClick={() => setSearch("")}>
+              Clear filters
             </button>
           </div>
+
+          {/* OVERVIEW */}
+          {page === "overview" && (
+            <>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-label">ACTIVE URLS</div>
+                  <div className="stat-value">{kpis.activeUrls}</div>
+                  <div className="stat-desc">Links monitored</div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-label">RESTOCKS (7 DAYS)</div>
+                  <div className="stat-value kpi-value">
+                    {kpis.last7}
+                    <Trend delta={kpis.last7Delta} />
+                  </div>
+                  <div className="stat-desc">vs previous 7d</div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-label">SUPPLIERS</div>
+                  <div className="stat-value">{kpis.activeSuppliers}</div>
+                  <div className="stat-desc">Active suppliers</div>
+                </div>
+
+                <div className="stat-card">
+                  <div className="stat-label">ALERTS SENT</div>
+                  <div className="stat-value">{kpis.alertsSent}</div>
+                  <div className="stat-desc">Notifications</div>
+                </div>
+              </div>
+
+              {/* RECENT RESTOCKS mini feed real (com tabela) */}
+              <div className="table-wrapper">
+                <div className="table-header">
+                  <div>
+                    <h2>Recent Restocks</h2>
+                    <p>Latest supplier restocks being tracked live.</p>
+                  </div>
+                  <button className="btn-secondary" onClick={() => setPage("alerts")}>
+                    View all
+                  </button>
+                </div>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Supplier</th>
+                      <th>Product</th>
+                      <th>SKU</th>
+                      <th>Marketplace</th>
+                      <th>Last Restock</th>
+                      <th className="right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRestocks.slice(0, 12).map((r) => {
+                      const badge = restockStatusBadge(r.detected_at);
+                      return (
+                        <tr key={r.id}>
+                          <td>{r.supplier_name || "Unknown"}</td>
+                          <td>{r.product_name || "Unnamed product"}</td>
+                          <td>{r.sku || "--"}</td>
+                          <td>{mpLabel(r.marketplace)}</td>
+                          <td>{timeAgo(r.detected_at)}</td>
+                          <td className="right">
+                            <span className={badge.cls}>{badge.text}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {filteredRestocks.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                          No restocks found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* LINKS */}
+          {page === "links" && (
+            <div className="table-wrapper">
+              <div className="table-header">
+                <div>
+                  <h2>Supplier Links</h2>
+                  <p>All monitored URLs.</p>
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Supplier</th>
+                    <th>Marketplace</th>
+                    <th>Status</th>
+                    <th>URL</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLinks.map((l) => (
+                    <tr key={l.id}>
+                      <td>{l.supplier_name}</td>
+                      <td>{mpLabel(l.marketplace as any)}</td>
+                      <td>
+                        <span className={`badge ${l.is_active ? "badge-normal" : "badge-watch"}`}>
+                          {l.is_active ? "Active" : "Paused"}
+                        </span>
+                      </td>
+                      <td>
+                        <a className="clickable-url url-cell" href={l.url} target="_blank" rel="noreferrer">
+                          {l.url}
+                        </a>
+                      </td>
+                      <td>{fmtDate(l.created_at)}</td>
+                    </tr>
+                  ))}
+
+                  {filteredLinks.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                        No links found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ALERTS */}
+          {page === "alerts" && (
+            <div className="table-wrapper alerts-table-wrapper">
+              <div className="table-header alerts-table-header">
+                <div>
+                  <h2>Restock Alerts</h2>
+                  <p>Same logic as Overview — real events.</p>
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Supplier</th>
+                    <th>Product</th>
+                    <th>Change</th>
+                    <th>When</th>
+                    <th>Status</th>
+                    <th className="right">Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAlerts.map((a) => (
+                    <tr key={a.id} className={a.status === "open" ? "alert-row-unread" : ""}>
+                      <td>{a.supplier_name || "Unknown"}</td>
+                      <td>{a.product_name || a.reason || "Alert"}</td>
+                      <td>
+                        <span className={`badge change-${a.change_type || "restock"}`}>
+                          {a.change_type || "restock"}
+                        </span>
+                      </td>
+                      <td>{timeAgo(a.created_at)}</td>
+                      <td>
+                        <span className={`badge ${
+                          a.status === "open" ? "badge-hot" :
+                          a.status === "muted" ? "badge-watch" :
+                          "badge-normal"
+                        }`}>
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="right">
+                        <a
+                          className="open-link"
+                          href={a.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {filteredAlerts.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                        No alerts.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
-        {/* PAGES */}
-        {page === "overview" && (
-          <div className="page">
-            <h1 className="page-title">Overview</h1>
-
-            <div className="stats-grid">
-              <StatCard
-                label="Restocks (24h)"
-                value={kpis.last24}
-                sub="vs prev 24h"
-                delta={kpis.last24Delta}
-              />
-              <StatCard
-                label="Restocks (7d)"
-                value={kpis.last7}
-                sub="vs prev 7d"
-                delta={kpis.last7Delta}
-              />
-              <StatCard label="Active Links" value={kpis.activeLinks} sub="" />
-              <StatCard label="Open Alerts" value={kpis.openAlerts} sub="" />
-            </div>
-
-            <div className="split">
-              <section className="card">
-                <div className="card-header">
-                  <h2>Recent Restocks</h2>
-                  <span className="muted">
-                    live feed • {filteredRestocks.length} events
-                  </span>
-                </div>
-
-                <div className="feed">
-                  {filteredRestocks.slice(0, 12).map((e) => (
-                    <MiniFeedItem key={e.id} e={e} />
-                  ))}
-
-                  {filteredRestocks.length === 0 && (
-                    <div className="empty">No restocks found.</div>
-                  )}
-                </div>
-              </section>
-
-              <section className="card">
-                <div className="card-header">
-                  <h2>Alerts Snapshot</h2>
-                  <span className="muted">same logic as Alerts tab</span>
-                </div>
-
-                <div className="alerts-mini">
-                  {alerts.slice(0, 8).map((a) => (
-                    <div key={a.id} className={`alert-row ${a.status}`}>
-                      <div className="alert-title">
-                        {a.reason || "Alert"}
-                      </div>
-                      <div className="alert-sub">
-                        {a.supplier_name || "Unknown supplier"} •{" "}
-                        {timeAgo(a.created_at)}
-                      </div>
-                      <a
-                        href={a.url}
-                        className="alert-link"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {a.url}
-                      </a>
-                    </div>
-                  ))}
-                  {alerts.length === 0 && (
-                    <div className="empty">No alerts.</div>
-                  )}
-                </div>
-              </section>
-            </div>
-          </div>
-        )}
-
-        {page === "links" && (
-          <div className="page">
-            <h1 className="page-title">Supply Links</h1>
-
-            <section className="card">
-              <div className="card-header">
-                <h2>Monitored URLs</h2>
-                <span className="muted">{filteredLinks.length} links</span>
-              </div>
-
-              <div className="table">
-                <div className="row head">
-                  <div>Supplier</div>
-                  <div>Marketplace</div>
-                  <div>Status</div>
-                  <div>URL</div>
-                  <div>Created</div>
-                </div>
-
-                {filteredLinks.map((l) => (
-                  <div key={l.id} className="row">
-                    <div className="strong">{l.supplier_name}</div>
-                    <div>{mpBadge(l.marketplace as any)}</div>
-                    <div>
-                      <span className={`pill ${l.is_active ? "on" : "off"}`}>
-                        {l.is_active ? "Active" : "Paused"}
-                      </span>
-                    </div>
-                    <div className="truncate">
-                      <a href={l.url} target="_blank" rel="noreferrer">
-                        {l.url}
-                      </a>
-                    </div>
-                    <div className="muted">{fmtDate(l.created_at)}</div>
-                  </div>
-                ))}
-
-                {filteredLinks.length === 0 && (
-                  <div className="empty">No links found.</div>
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {page === "alerts" && (
-          <div className="page">
-            <h1 className="page-title">Alerts</h1>
-
-            <section className="card">
-              <div className="card-header">
-                <h2>Open & Recent Alerts</h2>
-                <span className="muted">{alerts.length} total</span>
-              </div>
-
-              <div className="alerts-list">
-                {alerts.map((a) => (
-                  <div key={a.id} className={`alert-row big ${a.status}`}>
-                    <div className="alert-title">
-                      {a.reason || "Alert"}
-                    </div>
-                    <div className="alert-sub">
-                      {a.supplier_name || "Unknown supplier"} •{" "}
-                      {fmtDate(a.created_at)}
-                    </div>
-                    <a
-                      href={a.url}
-                      className="alert-link"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {a.url}
-                    </a>
-                    <div className="alert-status">
-                      <span className={`pill ${a.status}`}>
-                        {a.status.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {alerts.length === 0 && (
-                  <div className="empty">No alerts.</div>
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-      </main>
+      </div>
     </div>
   );
 }
+
 

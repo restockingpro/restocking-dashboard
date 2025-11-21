@@ -1228,4 +1228,16 @@ body {
     min-width: 120px;
   }
 }
+/* REMOVE qualquer background de células da tabela */
+table tr,
+table td,
+table th {
+  background: transparent !important;
+}
+/* evita qualquer xadrez involuntário */
+tr:nth-child(even),
+tr:nth-child(odd) {
+  background: transparent !important;
+}
+
 

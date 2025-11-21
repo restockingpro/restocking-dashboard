@@ -649,4 +649,165 @@ body {
     min-width: 140px;
   }
 }
+/* ============================
+   RESTOCK ALERTS — PREMIUM UI
+   ============================ */
+
+.restock-alerts-page h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.restock-alerts-page p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* -------- Latest Alerts Section -------- */
+
+.latest-alerts-box {
+  margin-top: 20px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  border-radius: 18px;
+  max-width: 900px;
+}
+
+.latest-alerts-box h2 {
+  margin: 0 0 6px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Filters inside Latest Alerts */
+
+.alerts-filter-bar {
+  margin-top: 12px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.alerts-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.alerts-filter-item label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.alerts-filter-item select {
+  height: 36px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-main);
+}
+
+.alerts-filter-item select:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.alerts-filter-item select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Refresh Button */
+
+.btn-refresh {
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.btn-refresh:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+/* -------- All Alerts Section -------- */
+
+.all-alerts-box {
+  margin-top: 26px;
+}
+
+.all-alerts-box h2 {
+  margin-bottom: 4px;
+  font-size: 18px;
+}
+
+.no-alerts {
+  padding: 20px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* -------- Alerts Table -------- */
+
+.alerts-table {
+  margin-top: 14px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.5);
+}
+
+.alerts-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.alerts-table th,
+.alerts-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.alerts-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.alerts-table tr:hover td {
+  background: rgba(255,255,255,0.04);
+}
+
+/* Badge Styles for Alerts */
+.alert-badge {
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.alert-badge-restock {
+  background: rgba(16,185,129,0.18);
+  color: #6ee7b7;
+}
+
+.alert-badge-price {
+  background: rgba(59,130,246,0.18);
+  color: #93c5fd;
+}
+
+.alert-badge-oos {
+  background: rgba(248,113,113,0.18);
+  color: #fecaca;
+}
+
 

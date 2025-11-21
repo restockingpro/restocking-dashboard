@@ -649,3 +649,219 @@ body {
     min-width: 140px;
   }
 }
+/* ================================
+   RESTOCK ALERTS — styles only
+   cole no FINAL do App.css
+================================ */
+
+/* wrapper opcional da página (se existir) */
+.restock-alerts-page {
+  margin-top: 6px;
+}
+
+/* --- FILTER BAR (Restock Alerts) --- */
+.alerts-filter-bar,
+.filter-bar.alerts-filter-bar {
+  margin-top: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 14px;
+
+  width: 100%;
+  max-width: 1100px;
+}
+
+.filter-bar.alerts-filter-bar .filter-item {
+  min-width: 170px;
+  max-width: 230px;
+}
+
+.filter-bar.alerts-filter-bar .filter-item label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: .2px;
+}
+
+/* selects do Restock Alerts */
+.filter-bar.alerts-filter-bar select {
+  width: 100%;
+  height: 36px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-main);
+  outline: none;
+  appearance: none;
+}
+
+.filter-bar.alerts-filter-bar select:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.filter-bar.alerts-filter-bar select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* botões do topo (Refresh / Clear filters) */
+.alerts-top-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* Refresh menor e discreto */
+.alerts-refresh-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: .9;
+}
+.alerts-refresh-btn:hover {
+  background: rgba(255,255,255,0.07);
+  opacity: 1;
+}
+
+/* Clear filters alinhado com os filtros */
+.filter-bar.alerts-filter-bar .btn-ghost {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: .85;
+}
+.filter-bar.alerts-filter-bar .btn-ghost:hover {
+  background: rgba(255,255,255,0.07);
+  opacity: 1;
+}
+
+/* --- ALERTS TABLE tweaks --- */
+.alerts-table-wrap {
+  margin-top: 16px;
+}
+
+/* Se a tabela usa .table-wrapper, isso refina só alerts quando você add class "alerts-table" */
+.table-wrapper.alerts-table table {
+  font-size: 12px;
+}
+
+.table-wrapper.alerts-table th,
+.table-wrapper.alerts-table td {
+  padding: 9px 12px;
+  vertical-align: middle;
+}
+
+.table-wrapper.alerts-table th {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* link do produto roxinho e com hover */
+.alert-product-link,
+.table-wrapper.alerts-table a {
+  color: #a78bfa;
+  text-decoration: none;
+}
+.alert-product-link:hover,
+.table-wrapper.alerts-table a:hover {
+  text-decoration: underline;
+  color: #c4b5fd;
+}
+
+/* coluna "Change" / "Price" mais legível */
+.alert-change {
+  white-space: nowrap;
+  opacity: .95;
+}
+.alert-price {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Actions column (Read/Unread/Delete) --- */
+.alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.alert-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  min-width: 96px;
+  padding: 0 12px;
+
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+
+  transition: transform .12s ease, background .15s ease, opacity .15s ease;
+}
+.alert-action-btn:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateY(-1px);
+}
+
+/* variações */
+.alert-action-btn.read {
+  border-color: rgba(34,197,94,0.35);
+  background: rgba(34,197,94,0.10);
+}
+.alert-action-btn.unread {
+  border-color: rgba(168,85,247,0.35);
+  background: rgba(168,85,247,0.10);
+}
+.alert-action-btn.delete {
+  border-color: rgba(239,68,68,0.35);
+  background: rgba(239,68,68,0.08);
+}
+
+/* badges do status (Hot/Stable/Watch) um pouco mais compactos */
+.table-wrapper.alerts-table .badge {
+  font-size: 9.5px;
+  padding: 3px 7px;
+}
+
+/* responsivo */
+@media (max-width: 900px) {
+  .alerts-filter-bar,
+  .filter-bar.alerts-filter-bar {
+    max-width: 100%;
+  }
+  .filter-bar.alerts-filter-bar .filter-item {
+    min-width: 140px;
+  }
+  .alert-actions {
+    align-items: stretch;
+  }
+  .alert-action-btn {
+    width: 100%;
+  }
+}
+

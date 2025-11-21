@@ -6,13 +6,12 @@ type Page = "overview" | "links";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
 const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
-
 const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaGRyb29ndWp3eHVncG1rcHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODA4MDMsImV4cCI6MjA3OTI1NjgwM30.iNXj1oO_Bb5zv_uq-xJLuIWhqC3eQNOxvYsWUUL8rtE";
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/* --------- AMAZON DEPARTMENTS (TOP LEVEL) --------- */
+/* --------- AMAZON DEPARTMENTS --------- */
 const AMAZON_DEPARTMENTS = [
   "Appliances",
   "Arts, Crafts & Sewing",
@@ -223,11 +222,7 @@ function OverviewSection() {
 
       <div className="stats-grid">
         <StatCard label="Active URLs" value="128" description="Links monitored" />
-        <StatCard
-          label="Restocks (7 days)"
-          value="46"
-          description="High-demand products"
-        />
+        <StatCard label="Restocks (7 days)" value="46" description="High-demand products" />
         <StatCard label="Suppliers" value="9" description="Active suppliers" />
         <StatCard label="Alerts sent" value="312" description="Notifications" />
       </div>
@@ -242,9 +237,9 @@ function OverviewSection() {
 type SupplierLink = {
   id?: string;
   supplier: string;
-  label: string; // list_name no banco (department)
+  label: string; // department
   url: string;
-  products: string; // continua sendo a coluna do banco
+  products: string; // product name (coluna products)
   links: number;
   lastRestock: string;
   status: "Stable" | "Hot" | "Watch";
@@ -253,9 +248,9 @@ type SupplierLink = {
 
 type NewSupplierLinkInput = {
   supplier: string;
-  label: string; // department
+  label: string;
   url: string;
-  products: string; // product name (UI), mas salva em products
+  products: string;
   priority: SupplierLink["priority"];
   status: SupplierLink["status"];
   links?: number;
@@ -270,17 +265,13 @@ type AddLinkModalProps = {
 };
 
 function AddLinkModal({
-  open,
-  mode,
-  initialData,
-  onClose,
-  onSave,
+  open, mode, initialData, onClose, onSave,
 }: AddLinkModalProps) {
   const [form, setForm] = useState({
     supplier: "",
-    label: "", // department
+    label: "",
     url: "",
-    products: "", // product name no UI
+    products: "",
     priority: "High" as SupplierLink["priority"],
     status: "Hot" as SupplierLink["status"],
     links: "0",
@@ -310,7 +301,7 @@ function AddLinkModal({
       supplier: form.supplier.trim(),
       label: form.label.trim(),
       url: form.url.trim(),
-      products: form.products.trim(), // UI chama product name, banco é products
+      products: form.products.trim(),
       priority: form.priority,
       status: form.status,
       links: Number.isNaN(linksNumber) ? 0 : linksNumber,
@@ -340,45 +331,33 @@ function AddLinkModal({
               <input
                 type="text"
                 value={form.supplier}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, supplier: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
                 required
                 placeholder="KeHE, Nandansons..."
               />
             </div>
 
-            {/* ✅ PRODUCTS -> PRODUCT NAME */}
             <div className="form-field">
               <label>Product name</label>
               <input
                 type="text"
                 value={form.products}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, products: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, products: e.target.value }))}
                 required
                 placeholder="Davidoff Cool Water 4.2oz..."
               />
             </div>
 
-            {/* ✅ AMAZON DEPARTMENT */}
             <div className="form-field form-field-full">
               <label>Amazon Department</label>
               <select
                 value={form.label}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, label: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 required
               >
-                <option value="" disabled>
-                  Select a department...
-                </option>
+                <option value="" disabled>Select a department...</option>
                 {AMAZON_DEPARTMENTS.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
@@ -388,9 +367,7 @@ function AddLinkModal({
               <input
                 type="url"
                 value={form.url}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, url: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 required
                 placeholder="https://portal.kehe.com/..."
               />
@@ -401,10 +378,7 @@ function AddLinkModal({
               <select
                 value={form.priority}
                 onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    priority: e.target.value as SupplierLink["priority"],
-                  }))
+                  setForm((f) => ({ ...f, priority: e.target.value as SupplierLink["priority"] }))
                 }
               >
                 <option value="High">High</option>
@@ -418,10 +392,7 @@ function AddLinkModal({
               <select
                 value={form.status}
                 onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    status: e.target.value as SupplierLink["status"],
-                  }))
+                  setForm((f) => ({ ...f, status: e.target.value as SupplierLink["status"] }))
                 }
               >
                 <option value="Hot">Hot</option>
@@ -436,9 +407,7 @@ function AddLinkModal({
                 type="number"
                 min={0}
                 value={form.links}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, links: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, links: e.target.value }))}
               />
             </div>
           </div>
@@ -484,7 +453,7 @@ function SupplierLinksSection() {
           products: r.products ?? "",
           priority: (r.priority ?? "High") as SupplierLink["priority"],
           status: (r.status ?? "Stable") as SupplierLink["status"],
-          links: r.links_count ?? 0,
+          links: Number(r.links_count ?? 0),
           lastRestock: r.last_restock ?? "Not checked yet",
         })) as SupplierLink[];
 
@@ -509,19 +478,18 @@ function SupplierLinksSection() {
 
     const insertPayload = {
       supplier: payload.supplier,
-      list_name: payload.label, // department
+      list_name: payload.label,
       url: payload.url,
-      products: payload.products, // salva na coluna existente
+      products: payload.products,
       priority: payload.priority,
       status: payload.status,
       links_count: linksNumber,
     };
 
-    const { error } = await supabase
-      .from("supplier_links")
-      .insert(insertPayload);
+    const { error } = await supabase.from("supplier_links").insert(insertPayload);
 
     if (error) {
+      console.error("INSERT ERROR:", error);
       alert("Erro ao salvar no Supabase: " + error.message);
       return;
     }
@@ -550,6 +518,7 @@ function SupplierLinksSection() {
       .eq("id", editingRow.id);
 
     if (error) {
+      console.error("UPDATE ERROR:", error);
       alert("Erro ao atualizar no Supabase: " + error.message);
       return;
     }
@@ -564,13 +533,10 @@ function SupplierLinksSection() {
     const ok = window.confirm("Delete this supplier link?");
     if (!ok) return;
 
-    const { error } = await supabase
-      .from("supplier_links")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("supplier_links").delete().eq("id", id);
 
     if (error) {
-      console.log("DELETE ERROR:", error);
+      console.error("DELETE ERROR:", error);
       alert(error.message);
       return;
     }
@@ -593,8 +559,8 @@ function SupplierLinksSection() {
       <div className="page-header">
         <h1>Supplier Links</h1>
         <p>
-          Manage all supplier URLs that RestocKING monitors for restocks, price
-          changes and availability.
+          Manage all supplier URLs that RestocKING monitors for restocks,
+          price changes and availability.
         </p>
       </div>
 
@@ -602,8 +568,8 @@ function SupplierLinksSection() {
         <div className="toolbar-left">
           <h2>Monitored URLs</h2>
           <p>
-            {data.length} supplier sources connected. Keep links clean and
-            focused on your best-sellers.
+            {data.length} supplier sources connected. Keep links clean
+            and focused on your best-sellers.
           </p>
         </div>
         <div className="toolbar-right">
@@ -615,18 +581,9 @@ function SupplierLinksSection() {
       </div>
 
       <div className="toolbar-tags">
-        <div className="tag">
-          <span className="tag-dot" />
-          High priority
-        </div>
-        <div className="tag">
-          <span className="tag-dot warning" />
-          Watch closely
-        </div>
-        <div className="tag">
-          <span className="tag-dot danger" />
-          Risk of going OOS
-        </div>
+        <div className="tag"><span className="tag-dot" />High priority</div>
+        <div className="tag"><span className="tag-dot warning" />Watch closely</div>
+        <div className="tag"><span className="tag-dot danger" />Risk of going OOS</div>
       </div>
 
       <div className="table-wrapper">
@@ -660,8 +617,6 @@ function SupplierLinksSection() {
                 <tr key={row.id ?? idx}>
                   <td>{row.supplier}</td>
                   <td>{row.label}</td>
-
-                  {/* ✅ URL clicável */}
                   <td>
                     <a
                       href={row.url}
@@ -673,7 +628,6 @@ function SupplierLinksSection() {
                       {row.url}
                     </a>
                   </td>
-
                   <td>{row.products}</td>
                   <td>{row.priority}</td>
                   <td>{row.links}</td>
@@ -683,18 +637,10 @@ function SupplierLinksSection() {
                       {row.status}
                     </span>
                   </td>
-
                   <td className="right">
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <button
                         onClick={() => openEditModal(row)}
-                        className="action-btn edit"
                         title="Edit"
                         style={{
                           border: "1px solid rgba(255,255,255,0.1)",
@@ -709,7 +655,6 @@ function SupplierLinksSection() {
 
                       <button
                         onClick={() => handleDeleteLink(row.id)}
-                        className="action-btn delete"
                         title="Delete"
                         style={{
                           border: "1px solid rgba(255,255,255,0.1)",
@@ -774,4 +719,3 @@ export default function App() {
     </div>
   );
 }
-

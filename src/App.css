@@ -864,199 +864,577 @@ body {
     width: 100%;
   }
 }
-/* ================================
-   RESTOCK ALERTS – polish pack
-   (cole no final do App.css)
-   ================================ */
+/* ============================= */
+/* RESTOCK ALERTS (isolado)      */
+/* cola no FINAL do App.css      */
+/* ============================= */
 
-.alerts-page .toolbar {
-  margin-top: 6px;
+.alerts-page {
+  margin-top: 8px;
 }
 
-/* FILTER BAR - mais premium e organizado */
-.alerts-page .filter-bar{
+/* header + refresh */
+.alerts-toolbar {
   margin-top: 14px;
-  margin-bottom: 14px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px 12px;
-  align-items: end;
-
-  background: rgba(255,255,255,0.035);
-  border: 1px solid var(--border);
-  padding: 12px;
-  border-radius: 14px;
-  max-width: 100%;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.alerts-page .filter-item{
+.alerts-toolbar .left h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.alerts-toolbar .left p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.alerts-toolbar .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* filter bar (premium, igual links) */
+.alerts-filter-bar {
+  margin-top: 8px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 14px;
+
+  max-width: 980px;
+}
+
+.alerts-filter-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 160px;
+  max-width: 220px;
 }
 
-.alerts-page .filter-item label{
+.alerts-filter-item label {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
 }
 
-.alerts-page .filter-bar select{
+.alerts-filter-bar select {
   width: 100%;
-  height: 38px;
-  padding: 8px 11px;
+  height: 36px;
+  padding: 7px 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-main);
   outline: none;
   appearance: none;
-  transition: border .15s ease, background .15s ease, transform .05s ease;
 }
 
-.alerts-page .filter-bar select:hover{
-  background: rgba(255,255,255,0.09);
+.alerts-filter-bar select:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.alerts-page .filter-bar select:focus{
+.alerts-filter-bar select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-/* Clear filters no mesmo nível dos selects */
-.alerts-page .filter-bar .btn-ghost{
-  height: 38px;
-  padding: 0 14px;
+.alerts-filter-bar .btn-ghost {
+  height: 36px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-main);
   font-size: 12px;
-  font-weight: 600;
-  opacity: .9;
-  justify-self: end;
-  min-width: 130px;
+  opacity: 0.9;
 }
 
-.alerts-page .filter-bar .btn-ghost:hover{
-  background: rgba(255,255,255,0.08);
+.alerts-filter-bar .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
   opacity: 1;
 }
 
-/* Botão Refresh com cara de secundário bom */
-.alerts-page .refresh-btn{
-  border-radius: 999px;
+/* table wrapper igual sistema */
+.alerts-table-wrapper {
+  margin-top: 10px;
+  border-radius: 18px;
   border: 1px solid var(--border);
-  padding: 7px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background .15s ease, transform .05s ease;
-}
-.alerts-page .refresh-btn:hover{
-  background: rgba(255,255,255,0.08);
-}
-.alerts-page .refresh-btn:active{
-  transform: translateY(1px);
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
 }
 
-/* Tabela alerts: deixa respiro e alinha cabeçalho */
-.alerts-page .table-wrapper{
-  margin-top: 16px;
+.alerts-table-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.alerts-page .table-wrapper th{
+.alerts-table-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.alerts-table-header p {
+  margin: 2px 0 0;
   font-size: 11px;
-  letter-spacing: .02em;
+  color: var(--text-muted);
 }
 
-.alerts-page .table-wrapper td{
-  padding-top: 10px;
-  padding-bottom: 10px;
+/* table base */
+.alerts-table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.alerts-table-wrapper thead {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.alerts-table-wrapper th,
+.alerts-table-wrapper td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
-/* Links de produto na alerts (se tiver <a>) */
-.alerts-page .alerts-link{
-  color: #a5b4fc;
+.alerts-table-wrapper th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.alerts-table-wrapper td {
+  color: var(--text-main);
+}
+
+.alerts-table-wrapper tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* unread row highlight */
+.alert-row-unread td {
+  background: rgba(124, 58, 237, 0.06);
+}
+
+/* product link */
+.alert-product-link {
+  color: #a78bfa;
   text-decoration: none;
+  font-weight: 500;
 }
-.alerts-page .alerts-link:hover{
+
+.alert-product-link:hover {
   text-decoration: underline;
-  color: #c7d2fe;
 }
 
-/* Actions column – botões bonitos e compactos
-   Para usar: coloque className="alert-action-btn read|unread|delete"
-*/
-.alerts-page .alerts-actions{
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.alerts-page .alert-action-btn{
+/* change pill */
+.alert-change {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  color: var(--text-main);
-
-  padding: 7px 10px;
-  min-width: 96px;
-  height: 34px;
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
   font-weight: 600;
-  cursor: pointer;
-
-  transition: background .15s ease, transform .05s ease, border .15s ease;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  white-space: nowrap;
 }
 
-.alerts-page .alert-action-btn:hover{
-  background: rgba(255,255,255,0.08);
+.alert-change.restocks {
+  background: rgba(16, 185, 129, 0.12);
+  color: #a7f3d0;
+  border-color: rgba(16,185,129,0.25);
 }
 
-.alerts-page .alert-action-btn:active{
-  transform: translateY(1px);
+.alert-change.price-drop {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+  border-color: rgba(251,191,36,0.25);
 }
 
-/* Variantes */
-.alerts-page .alert-action-btn.read{
-  border-color: rgba(16,185,129,0.35);
-  background: rgba(16,185,129,0.10);
-  color: #bbf7d0;
-}
-
-.alerts-page .alert-action-btn.unread{
-  border-color: rgba(168,85,247,0.40);
-  background: rgba(168,85,247,0.10);
-  color: #e9d5ff;
-}
-
-.alerts-page .alert-action-btn.delete{
-  border-color: rgba(248,113,113,0.35);
-  background: rgba(248,113,113,0.10);
+.alert-change.oos-risk {
+  background: rgba(248, 113, 113, 0.12);
   color: #fecaca;
+  border-color: rgba(248,113,113,0.25);
 }
 
-/* Mobile: quebra bonitinho */
-@media (max-width: 720px){
-  .alerts-page .filter-bar{
-    grid-template-columns: 1fr 1fr;
-  }
-  .alerts-page .filter-bar .btn-ghost{
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
-  .alerts-page .alerts-actions{
-    justify-content: flex-start;
-  }
+/* priority pill */
+.alert-priority {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  white-space: nowrap;
 }
 
+.alert-priority.high {
+  color: #ffffff;
+  background: rgba(124,58,237,0.18);
+  border-color: rgba(124,58,237,0.35);
+  box-shadow: 0 0 12px rgba(124,58,237,0.25);
+}
+
+.alert-priority.medium {
+  color: #e5e7eb;
+  background: rgba(255,255,255,0.06);
+}
+
+.alert-priority.low {
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+}
+
+/* actions compact + alinhado */
+.alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.alert-action-btn {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1;
+  min-width: 110px;
+  text-align: center;
+}
+
+.alert-action-btn:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+/* responsive */
+@media (max-width: 900px) {
+  .alerts-filter-bar {
+    max-width: 100%;
+  }
+  .alerts-filter-item {
+    min-width: 140px;
+  }
+  .alert-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+}
+/* ============================= */
+/* RESTOCK ALERTS (isolado)      */
+/* cola no FINAL do App.css      */
+/* ============================= */
+
+.alerts-page {
+  margin-top: 8px;
+}
+
+/* header + refresh */
+.alerts-toolbar {
+  margin-top: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alerts-toolbar .left h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.alerts-toolbar .left p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.alerts-toolbar .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* filter bar (premium, igual links) */
+.alerts-filter-bar {
+  margin-top: 8px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 14px;
+
+  max-width: 980px;
+}
+
+.alerts-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.alerts-filter-item label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+.alerts-filter-bar select {
+  width: 100%;
+  height: 36px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  outline: none;
+  appearance: none;
+}
+
+.alerts-filter-bar select:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alerts-filter-bar select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.alerts-filter-bar .btn-ghost {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.alerts-filter-bar .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
+  opacity: 1;
+}
+
+/* table wrapper igual sistema */
+.alerts-table-wrapper {
+  margin-top: 10px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.alerts-table-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alerts-table-header h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.alerts-table-header p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* table base */
+.alerts-table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.alerts-table-wrapper thead {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.alerts-table-wrapper th,
+.alerts-table-wrapper td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.alerts-table-wrapper th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.alerts-table-wrapper td {
+  color: var(--text-main);
+}
+
+.alerts-table-wrapper tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* unread row highlight */
+.alert-row-unread td {
+  background: rgba(124, 58, 237, 0.06);
+}
+
+/* product link */
+.alert-product-link {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.alert-product-link:hover {
+  text-decoration: underline;
+}
+
+/* change pill */
+.alert-change {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.alert-change.restocks {
+  background: rgba(16, 185, 129, 0.12);
+  color: #a7f3d0;
+  border-color: rgba(16,185,129,0.25);
+}
+
+.alert-change.price-drop {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+  border-color: rgba(251,191,36,0.25);
+}
+
+.alert-change.oos-risk {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+  border-color: rgba(248,113,113,0.25);
+}
+
+/* priority pill */
+.alert-priority {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  white-space: nowrap;
+}
+
+.alert-priority.high {
+  color: #ffffff;
+  background: rgba(124,58,237,0.18);
+  border-color: rgba(124,58,237,0.35);
+  box-shadow: 0 0 12px rgba(124,58,237,0.25);
+}
+
+.alert-priority.medium {
+  color: #e5e7eb;
+  background: rgba(255,255,255,0.06);
+}
+
+.alert-priority.low {
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+}
+
+/* actions compact + alinhado */
+.alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.alert-action-btn {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1;
+  min-width: 110px;
+  text-align: center;
+}
+
+.alert-action-btn:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+/* responsive */
+@media (max-width: 900px) {
+  .alerts-filter-bar {
+    max-width: 100%;
+  }
+  .alerts-filter-item {
+    min-width: 140px;
+  }
+  .alert-actions {
+    flex-direction: row;
+    gap: 8px;
+  }
+}

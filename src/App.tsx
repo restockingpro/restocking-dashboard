@@ -6,7 +6,7 @@ type Page = "overview" | "links" | "alerts";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
 const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
-const supabaseAnonKey = "YOUR_ANON_KEY_HERE"; // mantém a sua key
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY; // mantém a sua key
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /* ---------- TYPES ---------- */

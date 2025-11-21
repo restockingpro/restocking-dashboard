@@ -5,8 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 type Page = "overview" | "links" | "alerts";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
-const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY; // mantém a sua key
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  "https://plhdroogujwxugpmkpta.supabase.co";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /* ---------- TYPES ---------- */
@@ -23,11 +25,10 @@ type RestockEvent = {
 
 type SupplierLink = {
   id: string;
-  supplier_name: string;
-  url: string;
-  marketplace: "amazon" | "walmart" | "ebay" | "other" | null;
-  is_active: boolean;
-  created_at: string;
+  supplier: string | null;
+  products: string | null;
+  list_name: string | null;
+  url: string | null;
 };
 
 type AlertRow = {
@@ -37,7 +38,7 @@ type AlertRow = {
   product_name: string | null;
   status: "open" | "resolved" | "muted";
   reason: string | null;
-  change_type: string | null; // ex: restock, price_drop, oos_risk...
+  change_type: string | null;
   created_at: string;
 };
 
@@ -93,11 +94,17 @@ export default function App() {
     "all" | "amazon" | "walmart" | "ebay" | "other"
   >("all");
   const [search, setSearch] = useState("");
-  const [activeOnly, setActiveOnly] = useState(true);
+
+  // modal add link
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSupplier, setNewSupplier] = useState("");
+  const [newProducts, setNewProducts] = useState("");
+  const [newListName, setNewListName] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [saving, setSaving] = useState(false);
 
   /* ---------- FETCH ---------- */
   async function loadAll() {
-    // se seus nomes forem outros, troca aqui
     const restocksQ = supabase
       .from("restock_events")
       .select("*")
@@ -106,8 +113,8 @@ export default function App() {
 
     const linksQ = supabase
       .from("supplier_links")
-      .select("*")
-      .order("created_at", { ascending: false })
+      .select("id, supplier, products, list_name, url")
+      .order("id", { ascending: false })
       .limit(500);
 
     const alertsQ = supabase
@@ -126,7 +133,6 @@ export default function App() {
   useEffect(() => {
     loadAll();
 
-    // realtime restocks
     const channel = supabase
       .channel("restocks-realtime")
       .on(
@@ -143,6 +149,41 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  /* ---------- ADD LINK ---------- */
+  async function addNewLink() {
+    if (!newSupplier.trim() || !newUrl.trim()) return;
+
+    try {
+      setSaving(true);
+      const { data, error } = await supabase
+        .from("supplier_links")
+        .insert([
+          {
+            supplier: newSupplier.trim(),
+            products: newProducts.trim() || null,
+            list_name: newListName.trim() || null,
+            url: newUrl.trim(),
+          },
+        ])
+        .select("id, supplier, products, list_name, url")
+        .single();
+
+      if (error) throw error;
+
+      setLinks((prev) => [data as any, ...prev]);
+      setShowAdd(false);
+      setNewSupplier("");
+      setNewProducts("");
+      setNewListName("");
+      setNewUrl("");
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao adicionar link. Confere RLS/políticas.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   /* ---------- FILTERED DATA ---------- */
   const q = search.trim().toLowerCase();
@@ -162,15 +203,15 @@ export default function App() {
 
   const filteredLinks = useMemo(() => {
     return links.filter((l) => {
-      const mpOk = marketFilter === "all" || l.marketplace === marketFilter;
-      const activeOk = !activeOnly || l.is_active;
       const searchOk =
         !q ||
-        l.url.toLowerCase().includes(q) ||
-        l.supplier_name.toLowerCase().includes(q);
-      return mpOk && activeOk && searchOk;
+        (l.url || "").toLowerCase().includes(q) ||
+        (l.supplier || "").toLowerCase().includes(q) ||
+        (l.products || "").toLowerCase().includes(q) ||
+        (l.list_name || "").toLowerCase().includes(q);
+      return searchOk;
     });
-  }, [links, marketFilter, activeOnly, q]);
+  }, [links, q]);
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
@@ -186,7 +227,7 @@ export default function App() {
     });
   }, [alerts, marketFilter, q]);
 
-  /* ---------- KPIs w/ TREND ---------- */
+  /* ---------- KPIs ---------- */
   const kpis = useMemo(() => {
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
@@ -209,9 +250,9 @@ export default function App() {
       return now - t > 7 * dayMs && now - t <= 14 * dayMs;
     }).length;
 
-    const activeUrls = links.filter((l) => l.is_active).length;
+    const activeUrls = links.length;
     const activeSuppliers = new Set(
-      links.filter((l) => l.is_active).map((l) => l.supplier_name)
+      links.map((l) => l.supplier).filter(Boolean)
     ).size;
 
     const alertsSent = alerts.length;
@@ -283,7 +324,14 @@ export default function App() {
       <div className="main-area">
         <header className="topbar">
           <div className="breadcrumb">
-            Dashboard / <span>{page === "overview" ? "Overview" : page === "links" ? "Supplier Links" : "Alerts"}</span>
+            Dashboard /{" "}
+            <span>
+              {page === "overview"
+                ? "Overview"
+                : page === "links"
+                ? "Supplier Links"
+                : "Alerts"}
+            </span>
           </div>
           <div className="topbar-right">
             <button className="btn-secondary" onClick={loadAll}>
@@ -304,7 +352,7 @@ export default function App() {
           {page === "links" && (
             <div className="page-header">
               <h1>Supplier Links</h1>
-              <p>All monitored URLs and suppliers.</p>
+              <p>Manage all supplier URLs RestocKING monitors.</p>
             </div>
           )}
           {page === "alerts" && (
@@ -314,8 +362,9 @@ export default function App() {
             </div>
           )}
 
-          {/* FILTER BAR (global, igual CSS) */}
+          {/* FILTER BAR */}
           <div className="filter-bar">
+            {/* marketplace só faz sentido pra Overview/Alerts, mas deixo global */}
             <div className="filter-item">
               <label>Marketplace</label>
               <select
@@ -330,26 +379,11 @@ export default function App() {
               </select>
             </div>
 
-            {page === "links" && (
-              <div className="filter-item">
-                <label>Status</label>
-                <select
-                  value={activeOnly ? "active" : "all"}
-                  onChange={(e) =>
-                    setActiveOnly(e.target.value === "active")
-                  }
-                >
-                  <option value="active">Active only</option>
-                  <option value="all">All</option>
-                </select>
-              </div>
-            )}
-
             <div className="filter-item">
               <label>Search</label>
               <input
                 style={{ height: 36, borderRadius: 10, padding: "0 10px" }}
-                placeholder="supplier, SKU, product or URL..."
+                placeholder="supplier, product, department or URL..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -392,14 +426,16 @@ export default function App() {
                 </div>
               </div>
 
-              {/* RECENT RESTOCKS mini feed real (com tabela) */}
               <div className="table-wrapper">
                 <div className="table-header">
                   <div>
                     <h2>Recent Restocks</h2>
                     <p>Latest supplier restocks being tracked live.</p>
                   </div>
-                  <button className="btn-secondary" onClick={() => setPage("alerts")}>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setPage("alerts")}
+                  >
                     View all
                   </button>
                 </div>
@@ -434,7 +470,14 @@ export default function App() {
 
                     {filteredRestocks.length === 0 && (
                       <tr>
-                        <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                        <td
+                          colSpan={6}
+                          style={{
+                            padding: 14,
+                            textAlign: "center",
+                            color: "#9ca3af",
+                          }}
+                        >
                           No restocks found.
                         </td>
                       </tr>
@@ -453,40 +496,63 @@ export default function App() {
                   <h2>Supplier Links</h2>
                   <p>All monitored URLs.</p>
                 </div>
+
+                {/* BOTÃO DE ADD VOLTOU AQUI */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => alert("CSV depois a gente liga")}
+                  >
+                    Import from CSV
+                  </button>
+                  <button className="btn-primary" onClick={() => setShowAdd(true)}>
+                    + Add new link
+                  </button>
+                </div>
               </div>
 
               <table>
                 <thead>
                   <tr>
                     <th>Supplier</th>
-                    <th>Marketplace</th>
-                    <th>Status</th>
+                    <th>Department / List</th>
+                    <th>Product</th>
                     <th>URL</th>
-                    <th>Created</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLinks.map((l) => (
                     <tr key={l.id}>
-                      <td>{l.supplier_name}</td>
-                      <td>{mpLabel(l.marketplace as any)}</td>
+                      <td>{l.supplier || "Unknown"}</td>
+                      <td>{l.list_name || "--"}</td>
+                      <td>{l.products || "--"}</td>
                       <td>
-                        <span className={`badge ${l.is_active ? "badge-normal" : "badge-watch"}`}>
-                          {l.is_active ? "Active" : "Paused"}
-                        </span>
+                        {l.url ? (
+                          <a
+                            className="clickable-url url-cell"
+                            href={l.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {l.url}
+                          </a>
+                        ) : (
+                          "--"
+                        )}
                       </td>
-                      <td>
-                        <a className="clickable-url url-cell" href={l.url} target="_blank" rel="noreferrer">
-                          {l.url}
-                        </a>
-                      </td>
-                      <td>{fmtDate(l.created_at)}</td>
                     </tr>
                   ))}
 
                   {filteredLinks.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                      <td
+                        colSpan={4}
+                        style={{
+                          padding: 14,
+                          textAlign: "center",
+                          color: "#9ca3af",
+                        }}
+                      >
                         No links found.
                       </td>
                     </tr>
@@ -519,21 +585,30 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filteredAlerts.map((a) => (
-                    <tr key={a.id} className={a.status === "open" ? "alert-row-unread" : ""}>
+                    <tr
+                      key={a.id}
+                      className={a.status === "open" ? "alert-row-unread" : ""}
+                    >
                       <td>{a.supplier_name || "Unknown"}</td>
                       <td>{a.product_name || a.reason || "Alert"}</td>
                       <td>
-                        <span className={`badge change-${a.change_type || "restock"}`}>
+                        <span
+                          className={`badge change-${a.change_type || "restock"}`}
+                        >
                           {a.change_type || "restock"}
                         </span>
                       </td>
                       <td>{timeAgo(a.created_at)}</td>
                       <td>
-                        <span className={`badge ${
-                          a.status === "open" ? "badge-hot" :
-                          a.status === "muted" ? "badge-watch" :
-                          "badge-normal"
-                        }`}>
+                        <span
+                          className={`badge ${
+                            a.status === "open"
+                              ? "badge-hot"
+                              : a.status === "muted"
+                              ? "badge-watch"
+                              : "badge-normal"
+                          }`}
+                        >
                           {a.status}
                         </span>
                       </td>
@@ -552,7 +627,14 @@ export default function App() {
 
                   {filteredAlerts.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ padding: 14, textAlign: "center", color: "#9ca3af" }}>
+                      <td
+                        colSpan={6}
+                        style={{
+                          padding: 14,
+                          textAlign: "center",
+                          color: "#9ca3af",
+                        }}
+                      >
                         No alerts.
                       </td>
                     </tr>
@@ -563,8 +645,79 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {/* MODAL ADD LINK */}
+      {showAdd && (
+        <div className="modal-backdrop" onClick={() => setShowAdd(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">Add new supplier link</div>
+                <div className="modal-subtitle">
+                  This URL will be tracked for restocks.
+                </div>
+              </div>
+              <button className="btn-ghost" onClick={() => setShowAdd(false)}>
+                Close
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-field">
+                <label>Supplier *</label>
+                <input
+                  value={newSupplier}
+                  onChange={(e) => setNewSupplier(e.target.value)}
+                  placeholder="FragranceNet"
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Department / List</label>
+                <input
+                  value={newListName}
+                  onChange={(e) => setNewListName(e.target.value)}
+                  placeholder="Beauty & Personal Care"
+                />
+              </div>
+
+              <div className="form-field form-field-full">
+                <label>Product name / Notes</label>
+                <input
+                  value={newProducts}
+                  onChange={(e) => setNewProducts(e.target.value)}
+                  placeholder="Paris Hilton Just Me Man"
+                />
+              </div>
+
+              <div className="form-field form-field-full">
+                <label>URL *</label>
+                <input
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  placeholder="https://supplier.com/product/..."
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setShowAdd(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                disabled={saving}
+                onClick={addNewLink}
+              >
+                {saving ? "Saving..." : "Save link"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 

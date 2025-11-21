@@ -1,7 +1,17 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
+import { createClient } from "@supabase/supabase-js";
 
-type Page = "overview" | "links" | "alerts" | "history" | "settings" | "billing";
+type Page = "overview" | "links";
+
+/* --------- SUPABASE CLIENT (VITE) --------- */
+const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
+
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaGRyb29ndWp3eHVncG1rcHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODA4MDMsImV4cCI6MjA3OTI1NjgwM30.iNXj1oO_Bb5zv_uq-xJLuIWhqC3eQNOxvYsWUUL8rtE";
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/* --------- SMALL COMPONENTS --------- */
 
 type StatCardProps = {
   label: string;
@@ -18,8 +28,6 @@ function StatCard({ label, value, description }: StatCardProps) {
     </div>
   );
 }
-
-/* -------- RECENT RESTOCKS (OVERVIEW) -------- */
 
 type RestockRow = {
   supplier: string;
@@ -104,14 +112,15 @@ type SidebarProps = {
   onChangePage: (page: Page) => void;
 };
 
-const navItems: { label: string; key: Page }[] = [
-  { label: "Overview", key: "overview" },
-  { label: "Supplier Links", key: "links" },
-  { label: "Restock Alerts", key: "alerts" },
-  { label: "History", key: "history" },
-  { label: "Settings", key: "settings" },
-  { label: "Billing", key: "billing" },
-];
+const navItems: { label: string; key: Page | "history" | "settings" | "billing" }[] =
+  [
+    { label: "Overview", key: "overview" },
+    { label: "Supplier Links", key: "links" },
+    { label: "Restock Alerts", key: "history" },
+    { label: "History", key: "history" },
+    { label: "Settings", key: "settings" },
+    { label: "Billing", key: "billing" },
+  ];
 
 function Sidebar({ currentPage, onChangePage }: SidebarProps) {
   return (
@@ -125,12 +134,17 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
       </div>
       <nav className="nav">
         {navItems.map((item) => {
+          const isRealPage = item.key === "overview" || item.key === "links";
           const isActive = currentPage === item.key;
           return (
             <button
               key={item.label}
-              className={"nav-item" + (isActive ? " active" : "")}
-              onClick={() => onChangePage(item.key)}
+              className={
+                "nav-item" + (isActive && isRealPage ? " active" : "")
+              }
+              onClick={() => {
+                if (isRealPage) onChangePage(item.key as Page);
+              }}
               type="button"
             >
               {item.label}
@@ -146,29 +160,7 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
 type TopbarProps = { currentPage: Page };
 
 function Topbar({ currentPage }: TopbarProps) {
-  let label: string;
-  switch (currentPage) {
-    case "overview":
-      label = "Overview";
-      break;
-    case "links":
-      label = "Supplier Links";
-      break;
-    case "alerts":
-      label = "Restock Alerts";
-      break;
-    case "history":
-      label = "History";
-      break;
-    case "settings":
-      label = "Settings";
-      break;
-    case "billing":
-      label = "Billing";
-      break;
-    default:
-      label = "";
-  }
+  const label = currentPage === "overview" ? "Overview" : "Supplier Links";
 
   return (
     <header className="topbar">
@@ -212,53 +204,273 @@ function OverviewSection() {
   );
 }
 
-/* -------- SUPPLIER LINKS SECTION -------- */
+/* -------- SUPPLIER LINKS + MODAL -------- */
 
 type SupplierLink = {
+  id?: string;
   supplier: string;
-  label: string;
+  label: string;        // list_name no banco
   url: string;
   products: string;
   links: number;
   lastRestock: string;
   status: "Stable" | "Hot" | "Watch";
+  priority: "High" | "Medium" | "Low";
 };
 
-const supplierLinks: SupplierLink[] = [
-  {
-    supplier: "KeHE",
-    label: "Snacks & Grocery – Main list",
-    url: "https://portal.kehe.com/catalog/snacks?tag=top-sellers",
-    products: "Snacks / Grocery",
-    links: 34,
-    lastRestock: "2 hours ago",
-    status: "Hot",
-  },
-  {
-    supplier: "Nandansons",
-    label: "Fragrances – Davidoff / Calvin Klein",
-    url: "https://portal.nandansons.com/search?cool+water",
-    products: "Fragrances",
-    links: 12,
-    lastRestock: "Yesterday",
-    status: "Stable",
-  },
-  {
-    supplier: "The Perfume Spot",
-    label: "Paris Hilton / Celebrity perfumes",
-    url: "https://www.theperfumespot.com/paris-hilton",
-    products: "Fragrances",
-    links: 18,
-    lastRestock: "3 days ago",
-    status: "Watch",
-  },
-];
+type NewSupplierLinkInput = {
+  supplier: string;
+  label: string;
+  url: string;
+  products: string;
+  priority: SupplierLink["priority"];
+  status: SupplierLink["status"];
+  links?: number;
+};
+
+type AddLinkModalProps = {
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: NewSupplierLinkInput) => void;
+};
+
+function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
+  const [form, setForm] = useState({
+    supplier: "",
+    label: "",
+    url: "",
+    products: "",
+    priority: "High" as SupplierLink["priority"],
+    status: "Hot" as SupplierLink["status"],
+    links: "0",
+  });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        supplier: "",
+        label: "",
+        url: "",
+        products: "",
+        priority: "High",
+        status: "Hot",
+        links: "0",
+      });
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const linksNumber = Number(form.links || 0);
+
+    onSave({
+      supplier: form.supplier.trim(),
+      label: form.label.trim(),
+      url: form.url.trim(),
+      products: form.products.trim(),
+      priority: form.priority,
+      status: form.status,
+      links: Number.isNaN(linksNumber) ? 0 : linksNumber,
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal"
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">Add new supplier link</div>
+            <p className="modal-subtitle">
+              Keep URLs focused on your best suppliers. You can edit later.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-field">
+              <label>Supplier</label>
+              <input
+                type="text"
+                value={form.supplier}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, supplier: e.target.value }))
+                }
+                required
+                placeholder="KeHE, Nandansons..."
+              />
+            </div>
+            <div className="form-field">
+              <label>Products</label>
+              <input
+                type="text"
+                value={form.products}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, products: e.target.value }))
+                }
+                required
+                placeholder="Snacks, Fragrances..."
+              />
+            </div>
+            <div className="form-field form-field-full">
+              <label>List name</label>
+              <input
+                type="text"
+                value={form.label}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, label: e.target.value }))
+                }
+                required
+                placeholder="Snacks & Grocery – Main list"
+              />
+            </div>
+            <div className="form-field form-field-full">
+              <label>URL</label>
+              <input
+                type="url"
+                value={form.url}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, url: e.target.value }))
+                }
+                required
+                placeholder="https://portal.kehe.com/..."
+              />
+            </div>
+            <div className="form-field">
+              <label>Priority</label>
+              <select
+                value={form.priority}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    priority: e.target.value as SupplierLink["priority"],
+                  }))
+                }
+              >
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Status</label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    status: e.target.value as SupplierLink["status"],
+                  }))
+                }
+              >
+                <option value="Hot">Hot</option>
+                <option value="Stable">Stable</option>
+                <option value="Watch">Watch</option>
+              </select>
+            </div>
+            <div className="form-field">
+              <label>Links (optional)</label>
+              <input
+                type="number"
+                min={0}
+                value={form.links}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, links: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Save link
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function SupplierLinksSection() {
+  const [data, setData] = useState<SupplierLink[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function fetchLinks() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("supplier_links")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Fetch supplier_links error:", error.message);
+      setData([]);
+    } else {
+      const mapped =
+        (data ?? []).map((r: any) => ({
+          id: r.id,
+          supplier: r.supplier ?? "",
+          label: r.list_name ?? "",
+          url: r.url ?? "",
+          products: r.products ?? "",
+          priority: (r.priority ?? "High") as SupplierLink["priority"],
+          status: (r.status ?? "Stable") as SupplierLink["status"],
+          links: r.links_count ?? 0,
+          lastRestock: r.last_restock ?? "Not checked yet",
+        })) as SupplierLink[];
+
+      setData(mapped);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchLinks();
+  }, []);
+
   const getStatusBadgeClass = (status: SupplierLink["status"]) => {
     if (status === "Hot") return "badge badge-hot";
     if (status === "Watch") return "badge badge-watch";
     return "badge badge-normal";
+  };
+
+  const handleAddLink = async (payload: NewSupplierLinkInput) => {
+    const linksNumber = payload.links ?? 0;
+
+    const insertPayload = {
+      supplier: payload.supplier,
+      list_name: payload.label,
+      url: payload.url,
+      products: payload.products,
+      priority: payload.priority,
+      status: payload.status,
+      links_count: linksNumber,
+    };
+
+    const { error } = await supabase.from("supplier_links").insert(insertPayload);
+
+    if (error) {
+      alert("Erro ao salvar no Supabase: " + error.message);
+      return;
+    }
+
+    fetchLinks();
   };
 
   return (
@@ -275,13 +487,19 @@ function SupplierLinksSection() {
         <div className="toolbar-left">
           <h2>Monitored URLs</h2>
           <p>
-            {supplierLinks.length} supplier sources connected. Keep links clean
+            {data.length} supplier sources connected. Keep links clean
             and focused on your best-sellers.
           </p>
         </div>
         <div className="toolbar-right">
           <button className="btn-secondary">Import from CSV</button>
-          <button className="btn-primary">+ Add new link</button>
+          <button
+            className="btn-primary"
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+          >
+            + Add new link
+          </button>
         </div>
       </div>
 
@@ -308,438 +526,52 @@ function SupplierLinksSection() {
           </div>
           <button className="btn-secondary">Filters</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Supplier</th>
-              <th>List name</th>
-              <th>URL</th>
-              <th>Products</th>
-              <th>Links</th>
-              <th>Last Restock</th>
-              <th className="right">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {supplierLinks.map((row, idx) => (
-              <tr key={idx}>
-                <td>{row.supplier}</td>
-                <td>{row.label}</td>
-                <td>
-                  <span className="url-cell">{row.url}</span>
-                </td>
-                <td>{row.products}</td>
-                <td>{row.links}</td>
-                <td>{row.lastRestock}</td>
-                <td className="right">
-                  <span className={getStatusBadgeClass(row.status)}>
-                    {row.status}
-                  </span>
-                </td>
+
+        {loading ? (
+          <div style={{ padding: 20 }}>Loading...</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Supplier</th>
+                <th>List name</th>
+                <th>URL</th>
+                <th>Products</th>
+                <th>Priority</th>
+                <th>Links</th>
+                <th>Last Restock</th>
+                <th className="right">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-/* -------- RESTOCK ALERTS SECTION -------- */
-
-type RestockAlert = {
-  product: string;
-  supplier: string;
-  url: string;
-  status: "Hot" | "Normal" | "Watch";
-  lastCheck: string;
-  frequency: string;
-  notifications: string;
-};
-
-const restockAlerts: RestockAlert[] = [
-  {
-    product: "Davidoff Cool Water EDT 4.2oz",
-    supplier: "Nandansons",
-    url: "https://portal.nandansons.com/search?cool+water",
-    status: "Hot",
-    lastCheck: "5 min ago",
-    frequency: "Every 15 min",
-    notifications: "Email + WhatsApp",
-  },
-  {
-    product: "Paris Hilton Just Me – 3.4oz EDP",
-    supplier: "The Perfume Spot",
-    url: "https://www.theperfumespot.com/paris-hilton-just-me",
-    status: "Watch",
-    lastCheck: "32 min ago",
-    frequency: "Every hour",
-    notifications: "Email + Slack",
-  },
-  {
-    product: "Russell Stover Sugar Free – Assorted",
-    supplier: "KeHE",
-    url: "https://portal.kehe.com/catalog/snacks?tag=top-sellers",
-    status: "Normal",
-    lastCheck: "Yesterday",
-    frequency: "Daily",
-    notifications: "Email only",
-  },
-];
-
-function RestockAlertsSection() {
-  const getAlertBadgeClass = (status: RestockAlert["status"]) => {
-    if (status === "Hot") return "badge badge-hot";
-    if (status === "Watch") return "badge badge-watch";
-    return "badge badge-normal";
-  };
-
-  return (
-    <>
-      <div className="page-header">
-        <h1>Restock Alerts</h1>
-        <p>
-          Track supplier stock levels and get notified when high-priority items
-          come back in stock.
-        </p>
+            </thead>
+            <tbody>
+              {data.map((row, idx) => (
+                <tr key={row.id ?? idx}>
+                  <td>{row.supplier}</td>
+                  <td>{row.label}</td>
+                  <td>
+                    <span className="url-cell">{row.url}</span>
+                  </td>
+                  <td>{row.products}</td>
+                  <td>{row.priority}</td>
+                  <td>{row.links}</td>
+                  <td>{row.lastRestock}</td>
+                  <td className="right">
+                    <span className={getStatusBadgeClass(row.status)}>
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <h2>Monitored alerts</h2>
-          <p>
-            {restockAlerts.length} active alerts. Focus on best-sellers and
-            fast-moving SKUs.
-          </p>
-        </div>
-        <div className="toolbar-right">
-          <button className="btn-secondary">Export</button>
-          <button className="btn-primary">+ Add alert</button>
-        </div>
-      </div>
-
-      <div className="toolbar-tags">
-        <div className="tag">
-          <span className="tag-dot" />
-          In stock / Hot sellers
-        </div>
-        <div className="tag">
-          <span className="tag-dot warning" />
-          Low stock – Watch closely
-        </div>
-        <div className="tag">
-          <span className="tag-dot danger" />
-          Out of stock – Critical
-        </div>
-      </div>
-
-      <div className="table-wrapper">
-        <div className="table-header">
-          <div>
-            <h2>All Restock Alerts</h2>
-            <p>
-              Each URL is monitored and converted into stock signals and
-              notifications.
-            </p>
-          </div>
-          <button className="btn-secondary">Filters</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Supplier</th>
-              <th>URL</th>
-              <th>Status</th>
-              <th>Last check</th>
-              <th>Frequency</th>
-              <th className="right">Notifications</th>
-            </tr>
-          </thead>
-          <tbody>
-            {restockAlerts.map((row, idx) => (
-              <tr key={idx}>
-                <td>{row.product}</td>
-                <td>{row.supplier}</td>
-                <td>
-                  <span className="url-cell">{row.url}</span>
-                </td>
-                <td>
-                  <span className={getAlertBadgeClass(row.status)}>
-                    {row.status}
-                  </span>
-                </td>
-                <td>{row.lastCheck}</td>
-                <td>{row.frequency}</td>
-                <td className="right">{row.notifications}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-/* -------- HISTORY SECTION -------- */
-
-type HistoryEvent = {
-  date: string;
-  type: "Restock" | "Alert sent" | "Link added";
-  description: string;
-  source: string;
-};
-
-const historyEvents: HistoryEvent[] = [
-  {
-    date: "Today · 09:14",
-    type: "Alert sent",
-    description: "WhatsApp alert sent for Davidoff Cool Water (back in stock).",
-    source: "Nandansons",
-  },
-  {
-    date: "Yesterday · 18:03",
-    type: "Restock",
-    description: "Paris Hilton Just Me detected as back in stock.",
-    source: "The Perfume Spot",
-  },
-  {
-    date: "2 days ago",
-    type: "Link added",
-    description: "New KeHE snacks main list added to Supplier Links.",
-    source: "KeHE",
-  },
-];
-
-function HistorySection() {
-  return (
-    <>
-      <div className="page-header">
-        <h1>History</h1>
-        <p>
-          See a complete audit trail of restocks, alerts sent and changes to
-          your supplier links.
-        </p>
-      </div>
-
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <h2>Activity log</h2>
-          <p>All recent events generated by the SupplyRadar engine.</p>
-        </div>
-        <div className="toolbar-right">
-          <button className="btn-secondary">Export log</button>
-          <button className="btn-secondary">Clear filters</button>
-        </div>
-      </div>
-
-      <div className="table-wrapper">
-        <div className="table-header">
-          <div>
-            <h2>Recent activity</h2>
-            <p>Latest 30 events across all suppliers and alerts.</p>
-          </div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date / time</th>
-              <th>Type</th>
-              <th>Description</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {historyEvents.map((row, idx) => (
-              <tr key={idx}>
-                <td>{row.date}</td>
-                <td>{row.type}</td>
-                <td>{row.description}</td>
-                <td>{row.source}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-/* -------- SETTINGS SECTION -------- */
-
-function SettingsSection() {
-  return (
-    <>
-      <div className="page-header">
-        <h1>Settings</h1>
-        <p>Configure notifications, account preferences and security options.</p>
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-label">Notifications</span>
-          <span className="stat-value">Email + WhatsApp</span>
-          <span className="stat-desc">
-            Manage how you receive restock alerts.
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Time zone</span>
-          <span className="stat-value">America/New_York</span>
-          <span className="stat-desc">
-            All schedules and logs use this time zone.
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Team members</span>
-          <span className="stat-value">1</span>
-          <span className="stat-desc">Invite more users soon.</span>
-        </div>
-      </div>
-
-      <div className="table-wrapper">
-        <div className="table-header">
-          <div>
-            <h2>Alert channels</h2>
-            <p>Choose which channels are used by default for new alerts.</p>
-          </div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Channel</th>
-              <th>Status</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Email</td>
-              <td>
-                <span className="badge badge-normal">Enabled</span>
-              </td>
-              <td>Alerts sent to your primary email address.</td>
-            </tr>
-            <tr>
-              <td>WhatsApp</td>
-              <td>
-                <span className="badge badge-hot">Enabled</span>
-              </td>
-              <td>Fast alerts for high-priority SKUs.</td>
-            </tr>
-            <tr>
-              <td>Slack</td>
-              <td>
-                <span className="badge badge-watch">Coming soon</span>
-              </td>
-              <td>Connect your team workspace to receive alerts.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-/* -------- BILLING SECTION -------- */
-
-type Invoice = {
-  date: string;
-  id: string;
-  amount: string;
-  status: "Paid" | "Open";
-};
-
-const invoices: Invoice[] = [
-  {
-    date: "Nov 1, 2025",
-    id: "#INV-2025-1101",
-    amount: "$49.00",
-    status: "Paid",
-  },
-  {
-    date: "Oct 1, 2025",
-    id: "#INV-2025-1001",
-    amount: "$49.00",
-    status: "Paid",
-  },
-  {
-    date: "Sep 1, 2025",
-    id: "#INV-2025-0901",
-    amount: "$49.00",
-    status: "Paid",
-  },
-];
-
-function BillingSection() {
-  return (
-    <>
-      <div className="page-header">
-        <h1>Billing</h1>
-        <p>Manage your subscription, plan and invoices.</p>
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-label">Current plan</span>
-          <span className="stat-value">Pro</span>
-          <span className="stat-desc">Up to 500 monitored URLs.</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Monthly cost</span>
-          <span className="stat-value">$49</span>
-          <span className="stat-desc">Billed every 1st of the month.</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">Next invoice</span>
-          <span className="stat-value">Dec 1, 2025</span>
-          <span className="stat-desc">Auto-charged to Visa •••• 4242.</span>
-        </div>
-      </div>
-
-      <div className="table-wrapper">
-        <div className="table-header">
-          <div>
-            <h2>Invoices</h2>
-            <p>Download past invoices for your records.</p>
-          </div>
-          <button className="btn-secondary">Update payment method</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Invoice ID</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th className="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoices.map((row) => (
-              <tr key={row.id}>
-                <td>{row.date}</td>
-                <td>{row.id}</td>
-                <td>{row.amount}</td>
-                <td>
-                  <span
-                    className={
-                      row.status === "Paid"
-                        ? "badge badge-normal"
-                        : "badge badge-watch"
-                    }
-                  >
-                    {row.status}
-                  </span>
-                </td>
-                <td className="right">
-                  <button className="link-button">Download PDF</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AddLinkModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleAddLink}
+      />
     </>
   );
 }
@@ -757,13 +589,8 @@ export default function App() {
         <main className="main-content">
           {page === "overview" && <OverviewSection />}
           {page === "links" && <SupplierLinksSection />}
-          {page === "alerts" && <RestockAlertsSection />}
-          {page === "history" && <HistorySection />}
-          {page === "settings" && <SettingsSection />}
-          {page === "billing" && <BillingSection />}
         </main>
       </div>
     </div>
   );
 }
-

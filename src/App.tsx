@@ -5,11 +5,11 @@ import { createClient } from "@supabase/supabase-js";
 type Page = "overview" | "links" | "alerts";
 
 /* --------- SUPABASE CLIENT (VITE) --------- */
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://plhdroogujwxugpmkpta.supabase.co";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/* ---------- TYPES ---------- */
+/* ---------- TYPES (BATENDO COM TEU SCHEMA) ---------- */
 type RestockEvent = {
   id: string;
   supplier_name: string | null;
@@ -21,15 +21,13 @@ type RestockEvent = {
   marketplace: "amazon" | "walmart" | "ebay" | "other" | null;
 };
 
-type SupplierLink = {
+type SupplierLinkRow = {
   id: string;
-  supplier: string | null;     // <- seu schema
-  products: string | null;     // <- seu schema
-  list_name: string | null;    // <- seu schema (dept)
+  supplier: string | null;
+  products: string | null;
+  list_name: string | null;
   url: string;
-  is_active?: boolean | null;  // pode existir ou não
-  marketplace?: "amazon" | "walmart" | "ebay" | "other" | null;
-  created_at?: string;
+  created_at?: string | null;
 };
 
 type AlertRow = {
@@ -44,15 +42,15 @@ type AlertRow = {
 };
 
 /* ---------- HELPERS ---------- */
-const fmtDate = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "--";
+const fmtDate = (iso?: string | null) => {
+  if (!iso) return "--";
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const timeAgo = (iso: string) => {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -85,11 +83,115 @@ const restockStatusBadge = (detectedAt: string) => {
   return { text: "Normal", cls: "badge badge-normal" };
 };
 
+/* ---------- MODAL ADD LINK ---------- */
+function AddLinkModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [supplier, setSupplier] = useState("");
+  const [products, setProducts] = useState("");
+  const [listName, setListName] = useState("");
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function handleSave() {
+    setErr(null);
+    if (!supplier.trim() || !url.trim()) {
+      setErr("Supplier and URL are required.");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase.from("supplier_links").insert([
+      {
+        supplier: supplier.trim(),
+        products: products.trim() || null,
+        list_name: listName.trim() || null,
+        url: url.trim(),
+      },
+    ]);
+    setSaving(false);
+
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+
+    // reset + close
+    setSupplier("");
+    setProducts("");
+    setListName("");
+    setUrl("");
+    onClose();
+    onCreated();
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-card">
+        <div className="modal-header">
+          <h3>Add new supplier link</h3>
+          <button className="btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          <label>Supplier</label>
+          <input
+            placeholder="FragranceNet, Chia Pet..."
+            value={supplier}
+            onChange={(e) => setSupplier(e.target.value)}
+          />
+
+          <label>Product name</label>
+          <input
+            placeholder="Paris Hilton Just Me Man..."
+            value={products}
+            onChange={(e) => setProducts(e.target.value)}
+          />
+
+          <label>Amazon Department (list_name)</label>
+          <input
+            placeholder="Beauty & Personal Care..."
+            value={listName}
+            onChange={(e) => setListName(e.target.value)}
+          />
+
+          <label>URL</label>
+          <input
+            placeholder="https://supplier.com/product..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+
+          {err && <div className="modal-error">{err}</div>}
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Add link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
 
   const [restocks, setRestocks] = useState<RestockEvent[]>([]);
-  const [links, setLinks] = useState<SupplierLink[]>([]);
+  const [links, setLinks] = useState<SupplierLinkRow[]>([]);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
 
   // filtros globais
@@ -97,15 +199,9 @@ export default function App() {
     "all" | "amazon" | "walmart" | "ebay" | "other"
   >("all");
   const [search, setSearch] = useState("");
-  const [activeOnly, setActiveOnly] = useState(true);
 
   // modal add link
-  const [showAdd, setShowAdd] = useState(false);
-  const [newSupplier, setNewSupplier] = useState("");
-  const [newProduct, setNewProduct] = useState("");
-  const [newDept, setNewDept] = useState("");
-  const [newUrl, setNewUrl] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   /* ---------- FETCH ---------- */
   async function loadAll() {
@@ -154,48 +250,16 @@ export default function App() {
     };
   }, []);
 
-  /* ---------- ADD LINK ---------- */
-  async function handleAddLink() {
-    if (!newSupplier.trim() || !newUrl.trim()) return;
-
-    setSaving(true);
-    const payload = {
-      supplier: newSupplier.trim(),
-      products: newProduct.trim() || null,
-      list_name: newDept.trim() || null,
-      url: newUrl.trim(),
-    };
-
-    const { data, error } = await supabase
-      .from("supplier_links")
-      .insert([payload])
-      .select()
-      .single();
-
-    setSaving(false);
-
-    if (error) {
-      alert("Erro ao adicionar link: " + error.message);
-      return;
-    }
-
-    setLinks((prev) => [data as any, ...prev]);
-    setShowAdd(false);
-    setNewSupplier("");
-    setNewProduct("");
-    setNewDept("");
-    setNewUrl("");
-  }
-
-  async function handleDeleteLink(id: string) {
-    const ok = confirm("Delete this link?");
-    if (!ok) return;
-    const { error } = await supabase.from("supplier_links").delete().eq("id", id);
-    if (!error) setLinks((prev) => prev.filter((x) => x.id !== id));
-  }
-
   /* ---------- FILTERED DATA ---------- */
   const q = search.trim().toLowerCase();
+
+  const urlMpGuess = (url: string) => {
+    const u = (url || "").toLowerCase();
+    if (u.includes("amazon")) return "amazon";
+    if (u.includes("walmart")) return "walmart";
+    if (u.includes("ebay")) return "ebay";
+    return "other";
+  };
 
   const filteredRestocks = useMemo(() => {
     return restocks.filter((r) => {
@@ -212,23 +276,17 @@ export default function App() {
 
   const filteredLinks = useMemo(() => {
     return links.filter((l) => {
-      const mpOk =
-        marketFilter === "all" ||
-        (l.marketplace ? l.marketplace === marketFilter : true);
-
-      const isActive = l.is_active ?? true; // se não existir coluna, assume true
-      const activeOk = !activeOnly || isActive;
-
+      const mp = urlMpGuess(l.url);
+      const mpOk = marketFilter === "all" || mp === marketFilter;
       const searchOk =
         !q ||
-        (l.url || "").toLowerCase().includes(q) ||
+        l.url.toLowerCase().includes(q) ||
         (l.supplier || "").toLowerCase().includes(q) ||
         (l.products || "").toLowerCase().includes(q) ||
         (l.list_name || "").toLowerCase().includes(q);
-
-      return mpOk && activeOk && searchOk;
+      return mpOk && searchOk;
     });
-  }, [links, marketFilter, activeOnly, q]);
+  }, [links, marketFilter, q]);
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
@@ -249,19 +307,28 @@ export default function App() {
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
 
+    const last24 = restocks.filter(
+      (r) => now - new Date(r.detected_at).getTime() <= dayMs
+    ).length;
+
     const last7 = restocks.filter(
       (r) => now - new Date(r.detected_at).getTime() <= 7 * dayMs
     ).length;
 
-    const activeUrls = links.filter((l) => (l.is_active ?? true)).length;
-
+    const activeUrls = links.length;
     const activeSuppliers = new Set(
-      links.filter((l) => (l.is_active ?? true)).map((l) => l.supplier || "Unknown")
+      links.map((l) => l.supplier || "Unknown")
     ).size;
 
     const alertsSent = alerts.length;
 
-    return { activeUrls, last7, activeSuppliers, alertsSent };
+    return {
+      activeUrls,
+      last7,
+      activeSuppliers,
+      alertsSent,
+      last24,
+    };
   }, [restocks, links, alerts]);
 
   return (
@@ -330,9 +397,16 @@ export default function App() {
             </div>
           )}
           {page === "links" && (
-            <div className="page-header">
-              <h1>Supplier Links</h1>
-              <p>Manage all monitored URLs and suppliers.</p>
+            <div className="page-header page-header-links">
+              <div>
+                <h1>Supplier Links</h1>
+                <p>All monitored URLs and suppliers.</p>
+              </div>
+
+              {/* BOTÃO VOLTOU AQUI */}
+              <button className="btn-primary" onClick={() => setAddOpen(true)}>
+                + Add new link
+              </button>
             </div>
           )}
           {page === "alerts" && (
@@ -358,24 +432,11 @@ export default function App() {
               </select>
             </div>
 
-            {page === "links" && (
-              <div className="filter-item">
-                <label>Status</label>
-                <select
-                  value={activeOnly ? "active" : "all"}
-                  onChange={(e) => setActiveOnly(e.target.value === "active")}
-                >
-                  <option value="active">Active only</option>
-                  <option value="all">All</option>
-                </select>
-              </div>
-            )}
-
             <div className="filter-item">
               <label>Search</label>
               <input
                 style={{ height: 36, borderRadius: 10, padding: "0 10px" }}
-                placeholder="supplier, SKU, product or URL..."
+                placeholder="supplier, product or URL..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -384,16 +445,6 @@ export default function App() {
             <button className="btn-ghost" onClick={() => setSearch("")}>
               Clear filters
             </button>
-
-            {page === "links" && (
-              <button
-                className="btn-primary"
-                style={{ marginLeft: "auto" }}
-                onClick={() => setShowAdd(true)}
-              >
-                + Add new link
-              </button>
-            )}
           </div>
 
           {/* OVERVIEW */}
@@ -408,8 +459,8 @@ export default function App() {
 
                 <div className="stat-card">
                   <div className="stat-label">RESTOCKS (7 DAYS)</div>
-                  <div className="stat-value">{kpis.last7}</div>
-                  <div className="stat-desc">Last 7 days</div>
+                  <div className="stat-value kpi-value">{kpis.last7}</div>
+                  <div className="stat-desc">Last 7d</div>
                 </div>
 
                 <div className="stat-card">
@@ -494,10 +545,10 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Supplier</th>
-                    <th>Department</th>
+                    <th>Amazon Dept</th>
                     <th>Product</th>
                     <th>URL</th>
-                    <th className="right">Actions</th>
+                    <th>Created</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -516,14 +567,7 @@ export default function App() {
                           {l.url}
                         </a>
                       </td>
-                      <td className="right">
-                        <button
-                          className="btn-ghost"
-                          onClick={() => handleDeleteLink(l.id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
+                      <td>{fmtDate(l.created_at)}</td>
                     </tr>
                   ))}
 
@@ -562,7 +606,10 @@ export default function App() {
                 </thead>
                 <tbody>
                   {filteredAlerts.map((a) => (
-                    <tr key={a.id} className={a.status === "open" ? "alert-row-unread" : ""}>
+                    <tr
+                      key={a.id}
+                      className={a.status === "open" ? "alert-row-unread" : ""}
+                    >
                       <td>{a.supplier_name || "Unknown"}</td>
                       <td>{a.product_name || a.reason || "Alert"}</td>
                       <td>
@@ -572,11 +619,15 @@ export default function App() {
                       </td>
                       <td>{timeAgo(a.created_at)}</td>
                       <td>
-                        <span className={`badge ${
-                          a.status === "open" ? "badge-hot" :
-                          a.status === "muted" ? "badge-watch" :
-                          "badge-normal"
-                        }`}>
+                        <span
+                          className={`badge ${
+                            a.status === "open"
+                              ? "badge-hot"
+                              : a.status === "muted"
+                              ? "badge-watch"
+                              : "badge-normal"
+                          }`}
+                        >
                           {a.status}
                         </span>
                       </td>
@@ -599,73 +650,16 @@ export default function App() {
               </table>
             </div>
           )}
-
-          {/* MODAL ADD LINK */}
-          {showAdd && (
-            <div className="modal-backdrop" onClick={() => setShowAdd(false)}>
-              <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <div>
-                    <div className="modal-title">Add new supplier link</div>
-                    <div className="modal-subtitle">This URL will be monitored for restocks.</div>
-                  </div>
-                  <button className="btn-ghost" onClick={() => setShowAdd(false)}>
-                    Close
-                  </button>
-                </div>
-
-                <div className="form-grid">
-                  <div className="form-field">
-                    <label>Supplier</label>
-                    <input
-                      value={newSupplier}
-                      onChange={(e) => setNewSupplier(e.target.value)}
-                      placeholder="FragranceNet"
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Department</label>
-                    <input
-                      value={newDept}
-                      onChange={(e) => setNewDept(e.target.value)}
-                      placeholder="Beauty & Personal Care"
-                    />
-                  </div>
-
-                  <div className="form-field form-field-full">
-                    <label>Product name (optional)</label>
-                    <input
-                      value={newProduct}
-                      onChange={(e) => setNewProduct(e.target.value)}
-                      placeholder="Paris Hilton Just Me Man"
-                    />
-                  </div>
-
-                  <div className="form-field form-field-full">
-                    <label>URL</label>
-                    <input
-                      value={newUrl}
-                      onChange={(e) => setNewUrl(e.target.value)}
-                      placeholder="https://supplier.com/product-page"
-                    />
-                  </div>
-                </div>
-
-                <div className="modal-actions">
-                  <button className="btn-ghost" onClick={() => setShowAdd(false)}>
-                    Cancel
-                  </button>
-                  <button className="btn-primary-big" onClick={handleAddLink} disabled={saving}>
-                    {saving ? "Saving..." : "Save link"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
+
+      {/* MODAL */}
+      <AddLinkModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={loadAll}
+      />
     </div>
   );
 }
+

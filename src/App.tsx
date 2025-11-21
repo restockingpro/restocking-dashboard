@@ -165,12 +165,16 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
       <nav className="nav">
         {navItems.map((item) => {
           const isRealPage =
-            item.key === "overview" || item.key === "links" || item.key === "alerts";
+            item.key === "overview" ||
+            item.key === "links" ||
+            item.key === "alerts";
           const isActive = currentPage === item.key;
           return (
             <button
               key={item.label}
-              className={"nav-item" + (isActive && isRealPage ? " active" : "")}
+              className={
+                "nav-item" + (isActive && isRealPage ? " active" : "")
+              }
               onClick={() => {
                 if (isRealPage) onChangePage(item.key as Page);
               }}
@@ -874,10 +878,14 @@ function RestockAlertsSection() {
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
-      const okDept = filterDepartment === "All" || a.department === filterDepartment;
-      const okPri = filterPriority === "All" || a.priority === filterPriority;
-      const okSt = filterStatus === "All" || a.status === filterStatus;
-      const okCh = filterChange === "All" || a.change_type === filterChange;
+      const okDept =
+        filterDepartment === "All" || a.department === filterDepartment;
+      const okPri =
+        filterPriority === "All" || a.priority === filterPriority;
+      const okSt =
+        filterStatus === "All" || a.status === filterStatus;
+      const okCh =
+        filterChange === "All" || a.change_type === filterChange;
       return okDept && okPri && okSt && okCh;
     });
   }, [alerts, filterDepartment, filterPriority, filterStatus, filterChange]);
@@ -895,7 +903,9 @@ function RestockAlertsSection() {
     }
 
     setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, is_read: !is_read } : a))
+      prev.map((a) =>
+        a.id === id ? { ...a, is_read: !is_read } : a
+      )
     );
   };
 
@@ -937,7 +947,7 @@ function RestockAlertsSection() {
   };
 
   return (
-    <>
+    <div className="alerts-page">
       <div className="page-header">
         <h1>Restock Alerts</h1>
         <p>
@@ -1069,11 +1079,15 @@ function RestockAlertsSection() {
                   </td>
 
                   <td>
-                    <span className={`alert-change ${a.change_type === "restock"
-                      ? "restocks"
-                      : a.change_type === "price_drop"
-                      ? "price-drop"
-                      : "oos-risk"}`}>
+                    <span
+                      className={`alert-change ${
+                        a.change_type === "restock"
+                          ? "restocks"
+                          : a.change_type === "price_drop"
+                          ? "price-drop"
+                          : "oos-risk"
+                      }`}
+                    >
                       {changeLabel(a.change_type)}
                     </span>
                   </td>
@@ -1093,19 +1107,23 @@ function RestockAlertsSection() {
                   <td>{timeAgo(a.created_at)}</td>
 
                   <td>
-                    <span className={`alert-priority ${a.priority.toLowerCase()}`}>
+                    <span
+                      className={`alert-priority ${a.priority.toLowerCase()}`}
+                    >
                       {a.priority}
                     </span>
                   </td>
 
                   <td>
-                    <span className={
-                      a.status === "Hot"
-                        ? "badge badge-hot"
-                        : a.status === "Watch"
-                        ? "badge badge-watch"
-                        : "badge badge-normal"
-                    }>
+                    <span
+                      className={
+                        a.status === "Hot"
+                          ? "badge badge-hot"
+                          : a.status === "Watch"
+                          ? "badge badge-watch"
+                          : "badge badge-normal"
+                      }
+                    >
                       {a.status}
                     </span>
                   </td>
@@ -1134,7 +1152,7 @@ function RestockAlertsSection() {
           </table>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1156,4 +1174,5 @@ export default function App() {
     </div>
   );
 }
+
 

@@ -517,3 +517,24 @@ body {
     min-width: 140px;
   }
 }
+.btn-primary-big {
+  border-radius: 12px;
+  padding: 10px 22px;
+  background: linear-gradient(to right, #7c3aed, #c084fc);
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(124, 58, 237, 0.55);
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+
+.btn-primary-big:hover {
+  opacity: 0.92;
+  transform: scale(1.03);
+}
+
+.btn-primary-big:active {
+  transform: scale(0.98);
+}

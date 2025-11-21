@@ -864,4 +864,199 @@ body {
     width: 100%;
   }
 }
+/* ================================
+   RESTOCK ALERTS – polish pack
+   (cole no final do App.css)
+   ================================ */
+
+.alerts-page .toolbar {
+  margin-top: 6px;
+}
+
+/* FILTER BAR - mais premium e organizado */
+.alerts-page .filter-bar{
+  margin-top: 14px;
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 14px;
+  max-width: 100%;
+}
+
+.alerts-page .filter-item{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.alerts-page .filter-item label{
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: .2px;
+}
+
+.alerts-page .filter-bar select{
+  width: 100%;
+  height: 38px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-main);
+  outline: none;
+  appearance: none;
+  transition: border .15s ease, background .15s ease, transform .05s ease;
+}
+
+.alerts-page .filter-bar select:hover{
+  background: rgba(255,255,255,0.09);
+}
+
+.alerts-page .filter-bar select:focus{
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Clear filters no mesmo nível dos selects */
+.alerts-page .filter-bar .btn-ghost{
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: .9;
+  justify-self: end;
+  min-width: 130px;
+}
+
+.alerts-page .filter-bar .btn-ghost:hover{
+  background: rgba(255,255,255,0.08);
+  opacity: 1;
+}
+
+/* Botão Refresh com cara de secundário bom */
+.alerts-page .refresh-btn{
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .15s ease, transform .05s ease;
+}
+.alerts-page .refresh-btn:hover{
+  background: rgba(255,255,255,0.08);
+}
+.alerts-page .refresh-btn:active{
+  transform: translateY(1px);
+}
+
+/* Tabela alerts: deixa respiro e alinha cabeçalho */
+.alerts-page .table-wrapper{
+  margin-top: 16px;
+}
+
+.alerts-page .table-wrapper th{
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+.alerts-page .table-wrapper td{
+  padding-top: 10px;
+  padding-bottom: 10px;
+  vertical-align: middle;
+}
+
+/* Links de produto na alerts (se tiver <a>) */
+.alerts-page .alerts-link{
+  color: #a5b4fc;
+  text-decoration: none;
+}
+.alerts-page .alerts-link:hover{
+  text-decoration: underline;
+  color: #c7d2fe;
+}
+
+/* Actions column – botões bonitos e compactos
+   Para usar: coloque className="alert-action-btn read|unread|delete"
+*/
+.alerts-page .alerts-actions{
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.alerts-page .alert-action-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-main);
+
+  padding: 7px 10px;
+  min-width: 96px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: background .15s ease, transform .05s ease, border .15s ease;
+}
+
+.alerts-page .alert-action-btn:hover{
+  background: rgba(255,255,255,0.08);
+}
+
+.alerts-page .alert-action-btn:active{
+  transform: translateY(1px);
+}
+
+/* Variantes */
+.alerts-page .alert-action-btn.read{
+  border-color: rgba(16,185,129,0.35);
+  background: rgba(16,185,129,0.10);
+  color: #bbf7d0;
+}
+
+.alerts-page .alert-action-btn.unread{
+  border-color: rgba(168,85,247,0.40);
+  background: rgba(168,85,247,0.10);
+  color: #e9d5ff;
+}
+
+.alerts-page .alert-action-btn.delete{
+  border-color: rgba(248,113,113,0.35);
+  background: rgba(248,113,113,0.10);
+  color: #fecaca;
+}
+
+/* Mobile: quebra bonitinho */
+@media (max-width: 720px){
+  .alerts-page .filter-bar{
+    grid-template-columns: 1fr 1fr;
+  }
+  .alerts-page .filter-bar .btn-ghost{
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .alerts-page .alerts-actions{
+    justify-content: flex-start;
+  }
+}
 

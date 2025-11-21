@@ -768,6 +768,22 @@ table tr {
 table tr:hover {
   background: rgba(255, 255, 255, 0.04) !important;
 }
+/* REMOVE purple layer from Restock Alerts */
+.table-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Optional: soften rows slightly, matching Supplier Links style */
+table tbody tr {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 
 
 

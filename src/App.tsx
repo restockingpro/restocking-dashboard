@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import "./App.css";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,7 +11,7 @@ const supabaseAnonKey =
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/* --------- AMAZON DEPARTMENTS --------- */
+/* --------- AMAZON DEPARTMENTS (TOP LEVEL) --------- */
 const AMAZON_DEPARTMENTS = [
   "Appliances",
   "Arts, Crafts & Sewing",
@@ -222,7 +222,11 @@ function OverviewSection() {
 
       <div className="stats-grid">
         <StatCard label="Active URLs" value="128" description="Links monitored" />
-        <StatCard label="Restocks (7 days)" value="46" description="High-demand products" />
+        <StatCard
+          label="Restocks (7 days)"
+          value="46"
+          description="High-demand products"
+        />
         <StatCard label="Suppliers" value="9" description="Active suppliers" />
         <StatCard label="Alerts sent" value="312" description="Notifications" />
       </div>
@@ -237,9 +241,9 @@ function OverviewSection() {
 type SupplierLink = {
   id?: string;
   supplier: string;
-  label: string; // department
+  label: string; // list_name no banco (department)
   url: string;
-  products: string; // product name (coluna products)
+  products: string; // product name
   links: number;
   lastRestock: string;
   status: "Stable" | "Hot" | "Watch";
@@ -248,9 +252,9 @@ type SupplierLink = {
 
 type NewSupplierLinkInput = {
   supplier: string;
-  label: string;
+  label: string; // department
   url: string;
-  products: string;
+  products: string; // product name
   priority: SupplierLink["priority"];
   status: SupplierLink["status"];
   links?: number;
@@ -265,7 +269,11 @@ type AddLinkModalProps = {
 };
 
 function AddLinkModal({
-  open, mode, initialData, onClose, onSave,
+  open,
+  mode,
+  initialData,
+  onClose,
+  onSave,
 }: AddLinkModalProps) {
   const [form, setForm] = useState({
     supplier: "",
@@ -331,7 +339,9 @@ function AddLinkModal({
               <input
                 type="text"
                 value={form.supplier}
-                onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, supplier: e.target.value }))
+                }
                 required
                 placeholder="KeHE, Nandansons..."
               />
@@ -342,7 +352,9 @@ function AddLinkModal({
               <input
                 type="text"
                 value={form.products}
-                onChange={(e) => setForm((f) => ({ ...f, products: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, products: e.target.value }))
+                }
                 required
                 placeholder="Davidoff Cool Water 4.2oz..."
               />
@@ -352,12 +364,18 @@ function AddLinkModal({
               <label>Amazon Department</label>
               <select
                 value={form.label}
-                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, label: e.target.value }))
+                }
                 required
               >
-                <option value="" disabled>Select a department...</option>
+                <option value="" disabled>
+                  Select a department...
+                </option>
                 {AMAZON_DEPARTMENTS.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
                 ))}
               </select>
             </div>
@@ -367,7 +385,9 @@ function AddLinkModal({
               <input
                 type="url"
                 value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, url: e.target.value }))
+                }
                 required
                 placeholder="https://portal.kehe.com/..."
               />
@@ -378,7 +398,10 @@ function AddLinkModal({
               <select
                 value={form.priority}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, priority: e.target.value as SupplierLink["priority"] }))
+                  setForm((f) => ({
+                    ...f,
+                    priority: e.target.value as SupplierLink["priority"],
+                  }))
                 }
               >
                 <option value="High">High</option>
@@ -392,7 +415,10 @@ function AddLinkModal({
               <select
                 value={form.status}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as SupplierLink["status"] }))
+                  setForm((f) => ({
+                    ...f,
+                    status: e.target.value as SupplierLink["status"],
+                  }))
                 }
               >
                 <option value="Hot">Hot</option>
@@ -407,7 +433,9 @@ function AddLinkModal({
                 type="number"
                 min={0}
                 value={form.links}
-                onChange={(e) => setForm((f) => ({ ...f, links: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, links: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -431,6 +459,11 @@ function SupplierLinksSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<SupplierLink | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // filtros
+  const [filterDepartment, setFilterDepartment] = useState<string>("All");
+  const [filterPriority, setFilterPriority] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("All");
 
   async function fetchLinks() {
     setLoading(true);
@@ -473,6 +506,19 @@ function SupplierLinksSection() {
     return "badge badge-normal";
   };
 
+  // data filtrada
+  const filteredData = useMemo(() => {
+    return data.filter((row) => {
+      const okDept =
+        filterDepartment === "All" || row.label === filterDepartment;
+      const okPriority =
+        filterPriority === "All" || row.priority === filterPriority;
+      const okStatus =
+        filterStatus === "All" || row.status === filterStatus;
+      return okDept && okPriority && okStatus;
+    });
+  }, [data, filterDepartment, filterPriority, filterStatus]);
+
   const handleAddLink = async (payload: NewSupplierLinkInput) => {
     const linksNumber = payload.links ?? 0;
 
@@ -486,7 +532,9 @@ function SupplierLinksSection() {
       links_count: linksNumber,
     };
 
-    const { error } = await supabase.from("supplier_links").insert(insertPayload);
+    const { error } = await supabase
+      .from("supplier_links")
+      .insert(insertPayload);
 
     if (error) {
       console.error("INSERT ERROR:", error);
@@ -533,7 +581,10 @@ function SupplierLinksSection() {
     const ok = window.confirm("Delete this supplier link?");
     if (!ok) return;
 
-    const { error } = await supabase.from("supplier_links").delete().eq("id", id);
+    const { error } = await supabase
+      .from("supplier_links")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       console.error("DELETE ERROR:", error);
@@ -554,6 +605,12 @@ function SupplierLinksSection() {
     setIsModalOpen(true);
   };
 
+  const clearFilters = () => {
+    setFilterDepartment("All");
+    setFilterPriority("All");
+    setFilterStatus("All");
+  };
+
   return (
     <>
       <div className="page-header">
@@ -568,8 +625,7 @@ function SupplierLinksSection() {
         <div className="toolbar-left">
           <h2>Monitored URLs</h2>
           <p>
-            {data.length} supplier sources connected. Keep links clean
-            and focused on your best-sellers.
+            {filteredData.length} of {data.length} links shown.
           </p>
         </div>
         <div className="toolbar-right">
@@ -580,10 +636,65 @@ function SupplierLinksSection() {
         </div>
       </div>
 
+      {/* ✅ FILTER BAR */}
+      <div className="filter-bar">
+        <div className="filter-item">
+          <label>Department</label>
+          <select
+            value={filterDepartment}
+            onChange={(e) => setFilterDepartment(e.target.value)}
+          >
+            <option value="All">All</option>
+            {AMAZON_DEPARTMENTS.map((d) => (
+              <option value={d} key={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-item">
+          <label>Priority</label>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+          >
+            <option value="All">All</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+
+        <div className="filter-item">
+          <label>Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="All">All</option>
+            <option value="Hot">Hot</option>
+            <option value="Stable">Stable</option>
+            <option value="Watch">Watch</option>
+          </select>
+        </div>
+
+        <button className="btn-ghost" onClick={clearFilters}>
+          Clear filters
+        </button>
+      </div>
+
       <div className="toolbar-tags">
-        <div className="tag"><span className="tag-dot" />High priority</div>
-        <div className="tag"><span className="tag-dot warning" />Watch closely</div>
-        <div className="tag"><span className="tag-dot danger" />Risk of going OOS</div>
+        <div className="tag">
+          <span className="tag-dot" />
+          High priority
+        </div>
+        <div className="tag">
+          <span className="tag-dot warning" />
+          Watch closely
+        </div>
+        <div className="tag">
+          <span className="tag-dot danger" />
+          Risk of going OOS
+        </div>
       </div>
 
       <div className="table-wrapper">
@@ -597,6 +708,10 @@ function SupplierLinksSection() {
 
         {loading ? (
           <div style={{ padding: 20 }}>Loading...</div>
+        ) : filteredData.length === 0 ? (
+          <div style={{ padding: 20, opacity: 0.7 }}>
+            No links match these filters.
+          </div>
         ) : (
           <table>
             <thead>
@@ -613,10 +728,11 @@ function SupplierLinksSection() {
               </tr>
             </thead>
             <tbody>
-              {data.map((row, idx) => (
+              {filteredData.map((row, idx) => (
                 <tr key={row.id ?? idx}>
                   <td>{row.supplier}</td>
                   <td>{row.label}</td>
+
                   <td>
                     <a
                       href={row.url}
@@ -628,6 +744,7 @@ function SupplierLinksSection() {
                       {row.url}
                     </a>
                   </td>
+
                   <td>{row.products}</td>
                   <td>{row.priority}</td>
                   <td>{row.links}</td>
@@ -637,8 +754,15 @@ function SupplierLinksSection() {
                       {row.status}
                     </span>
                   </td>
+
                   <td className="right">
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
                       <button
                         onClick={() => openEditModal(row)}
                         title="Edit"
@@ -719,3 +843,4 @@ export default function App() {
     </div>
   );
 }
+

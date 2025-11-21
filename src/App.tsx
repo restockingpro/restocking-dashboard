@@ -7,7 +7,8 @@ type Page = "overview" | "links";
 /* --------- SUPABASE CLIENT (VITE) --------- */
 const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
 
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaGRyb29ndWp3eHVncG1rcHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODA4MDMsImV4cCI6MjA3OTI1NjgwM30.iNXj1oO_Bb5zv_uq-xJLuIWhqC3eQNOxvYsWUUL8rtE";
+const supabaseAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaGRyb29ndWp3eHVncG1rcHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODA4MDMsImV4cCI6MjA3OTI1NjgwM30.iNXj1oO_Bb5zv_uq-xJLuIWhqC3eQNOxvYsWUUL8rtE";
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -112,15 +113,17 @@ type SidebarProps = {
   onChangePage: (page: Page) => void;
 };
 
-const navItems: { label: string; key: Page | "history" | "settings" | "billing" }[] =
-  [
-    { label: "Overview", key: "overview" },
-    { label: "Supplier Links", key: "links" },
-    { label: "Restock Alerts", key: "history" },
-    { label: "History", key: "history" },
-    { label: "Settings", key: "settings" },
-    { label: "Billing", key: "billing" },
-  ];
+const navItems: {
+  label: string;
+  key: Page | "history" | "settings" | "billing";
+}[] = [
+  { label: "Overview", key: "overview" },
+  { label: "Supplier Links", key: "links" },
+  { label: "Restock Alerts", key: "history" },
+  { label: "History", key: "history" },
+  { label: "Settings", key: "settings" },
+  { label: "Billing", key: "billing" },
+];
 
 function Sidebar({ currentPage, onChangePage }: SidebarProps) {
   return (
@@ -139,9 +142,7 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
           return (
             <button
               key={item.label}
-              className={
-                "nav-item" + (isActive && isRealPage ? " active" : "")
-              }
+              className={"nav-item" + (isActive && isRealPage ? " active" : "")}
               onClick={() => {
                 if (isRealPage) onChangePage(item.key as Page);
               }}
@@ -152,7 +153,9 @@ function Sidebar({ currentPage, onChangePage }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="sidebar-footer">© {new Date().getFullYear()} RestocKING</div>
+      <div className="sidebar-footer">
+        © {new Date().getFullYear()} RestocKING
+      </div>
     </aside>
   );
 }
@@ -209,7 +212,7 @@ function OverviewSection() {
 type SupplierLink = {
   id?: string;
   supplier: string;
-  label: string;        // list_name no banco
+  label: string; // list_name no banco
   url: string;
   products: string;
   links: number;
@@ -338,9 +341,7 @@ function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
               <input
                 type="url"
                 value={form.url}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, url: e.target.value }))
-                }
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 required
                 placeholder="https://portal.kehe.com/..."
               />
@@ -463,7 +464,9 @@ function SupplierLinksSection() {
       links_count: linksNumber,
     };
 
-    const { error } = await supabase.from("supplier_links").insert(insertPayload);
+    const { error } = await supabase
+      .from("supplier_links")
+      .insert(insertPayload);
 
     if (error) {
       alert("Erro ao salvar no Supabase: " + error.message);
@@ -473,13 +476,35 @@ function SupplierLinksSection() {
     fetchLinks();
   };
 
+  // ✅ DELETE
+  const handleDeleteLink = async (id?: string) => {
+    if (!id) return;
+
+    const ok = window.confirm("Delete this supplier link?");
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("supplier_links")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.log("DELETE ERROR:", error);
+      alert(error.message);
+      return;
+    }
+
+    // remove na tela sem reload
+    setData((prev) => prev.filter((l) => l.id !== id));
+  };
+
   return (
     <>
       <div className="page-header">
         <h1>Supplier Links</h1>
         <p>
-          Manage all supplier URLs that RestocKING monitors for restocks,
-          price changes and availability.
+          Manage all supplier URLs that RestocKING monitors for restocks, price
+          changes and availability.
         </p>
       </div>
 
@@ -487,8 +512,8 @@ function SupplierLinksSection() {
         <div className="toolbar-left">
           <h2>Monitored URLs</h2>
           <p>
-            {data.length} supplier sources connected. Keep links clean
-            and focused on your best-sellers.
+            {data.length} supplier sources connected. Keep links clean and
+            focused on your best-sellers.
           </p>
         </div>
         <div className="toolbar-right">
@@ -541,6 +566,7 @@ function SupplierLinksSection() {
                 <th>Links</th>
                 <th>Last Restock</th>
                 <th className="right">Status</th>
+                <th className="right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -559,6 +585,24 @@ function SupplierLinksSection() {
                     <span className={getStatusBadgeClass(row.status)}>
                       {row.status}
                     </span>
+                  </td>
+
+                  {/* ✅ ACTIONS */}
+                  <td className="right">
+                    <button
+                      onClick={() => handleDeleteLink(row.id)}
+                      className="action-btn delete"
+                      title="Delete"
+                      style={{
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "transparent",
+                        padding: "6px 10px",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                      }}
+                    >
+                      🗑️
+                    </button>
                   </td>
                 </tr>
               ))}

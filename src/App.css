@@ -1,536 +1,809 @@
-:root {
-  color-scheme: dark;
-  --bg: #05040a;
-  --bg-alt: #0b0818;
-  --card: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.08);
-  --accent: #7c3aed;
-  --accent-soft: rgba(124, 58, 237, 0.2);
-  --text-main: #e5e7eb;
-  --text-muted: #9ca3af;
-}
+import React, { useState, useEffect } from "react";
+import "./App.css";
+import { createClient } from "@supabase/supabase-js";
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+type Page = "overview" | "links";
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Inter", sans-serif;
-  background: radial-gradient(
-    circle at top left,
-    #312a4a 0,
-    #05040a 45%,
-    #000 100%
-  );
-  color: var(--text-main);
-}
+/* --------- SUPABASE CLIENT (VITE) --------- */
+const supabaseUrl = "https://plhdroogujwxugpmkpta.supabase.co";
 
-.app-root {
-  min-height: 100vh;
-  display: flex;
-}
+const supabaseAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaGRyb29ndWp3eHVncG1rcHRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2ODA4MDMsImV4cCI6MjA3OTI1NjgwM30.iNXj1oO_Bb5zv_uq-xJLuIWhqC3eQNOxvYsWUUL8rtE";
 
-/* SIDEBAR */
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-.sidebar {
-  width: 250px;
-  border-right: 1px solid var(--border);
-  background: linear-gradient(to bottom, #05040a, #06030f);
-  display: flex;
-  flex-direction: column;
-}
+/* --------- AMAZON DEPARTMENTS (TOP LEVEL) --------- */
+const AMAZON_DEPARTMENTS = [
+  "Appliances",
+  "Arts, Crafts & Sewing",
+  "Automotive",
+  "Baby",
+  "Beauty & Personal Care",
+  "Books",
+  "Camera & Photo",
+  "Cell Phones & Accessories",
+  "Clothing, Shoes & Jewelry",
+  "Collectibles & Fine Art",
+  "Computers",
+  "Electronics",
+  "Grocery & Gourmet Food",
+  "Health & Household",
+  "Home & Kitchen",
+  "Industrial & Scientific",
+  "Kitchen & Dining",
+  "Movies & TV",
+  "Musical Instruments",
+  "Office Products",
+  "Patio, Lawn & Garden",
+  "Pet Supplies",
+  "Sports & Outdoors",
+  "Tools & Home Improvement",
+  "Toys & Games",
+  "Video Games",
+] as const;
 
-.logo-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
+/* --------- SMALL COMPONENTS --------- */
 
-.logo-icon {
-  height: 32px;
-  width: 32px;
-  border-radius: 10px;
-  background: radial-gradient(circle at top left, #f97316, #7c3aed);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
+type StatCardProps = {
+  label: string;
+  value: string;
+  description?: string;
+};
 
-.logo-title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.logo-sub {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.nav {
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nav-item {
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-main);
-}
-
-.nav-item.active {
-  background: var(--accent);
-  color: white;
-  box-shadow: 0 0 18px rgba(124, 58, 237, 0.5);
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 10px 16px;
-  font-size: 11px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-}
-
-/* MAIN AREA */
-
-.main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: radial-gradient(
-    circle at top left,
-    #312a4a 0,
-    #05040a 45%,
-    #000 100%
+function StatCard({ label, value, description }: StatCardProps) {
+  return (
+    <div className="stat-card">
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value}</span>
+      {description && <span className="stat-desc">{description}</span>}
+    </div>
   );
 }
 
-.topbar {
-  height: 52px;
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  backdrop-filter: blur(10px);
-  background: rgba(5, 4, 10, 0.9);
-}
+type RestockRow = {
+  supplier: string;
+  product: string;
+  sku: string;
+  lastRestock: string;
+  status: "Hot" | "Normal" | "Watch";
+};
 
-.breadcrumb {
-  font-size: 13px;
-  color: var(--text-muted);
-}
+function RestockTable() {
+  const rows: RestockRow[] = [
+    {
+      supplier: "Supplier A",
+      product: "Davidoff Cool Water 4.2oz",
+      sku: "DCW-42",
+      lastRestock: "2 hours ago",
+      status: "Hot",
+    },
+    {
+      supplier: "Supplier B",
+      product: "Legendary Protein Bar 12ct",
+      sku: "LEG-BAR-12",
+      lastRestock: "Yesterday",
+      status: "Normal",
+    },
+    {
+      supplier: "Supplier C",
+      product: "Renpure Shampoo 16oz",
+      sku: "REN-16",
+      lastRestock: "3 days ago",
+      status: "Watch",
+    },
+  ];
 
-.breadcrumb span {
-  color: var(--text-main);
-  font-weight: 500;
-}
+  const getBadgeClass = (status: RestockRow["status"]) => {
+    if (status === "Hot") return "badge badge-hot";
+    if (status === "Watch") return "badge badge-watch";
+    return "badge badge-normal";
+  };
 
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar {
-  height: 32px;
-  width: 32px;
-  border-radius: 999px;
-  background: radial-gradient(circle at top left, #f97316, #7c3aed);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.btn-secondary {
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-main);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.main-content {
-  padding: 18px 20px 28px;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.page-header p {
-  margin-top: 4px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-/* STATS GRID */
-
-.stats-grid {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.03),
-    rgba(20, 10, 40, 0.8)
+  return (
+    <div className="table-wrapper">
+      <div className="table-header">
+        <div>
+          <h2>Recent Restocks</h2>
+          <p>Latest supplier restocks being tracked by RestocKING.</p>
+        </div>
+        <button className="btn-secondary">View all</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Supplier</th>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Last Restock</th>
+            <th className="right">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.sku}>
+              <td>{row.supplier}</td>
+              <td>{row.product}</td>
+              <td>{row.sku}</td>
+              <td>{row.lastRestock}</td>
+              <td className="right">
+                <span className={getBadgeClass(row.status)}>{row.status}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
-  padding: 12px 14px;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
 }
 
-.stat-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+/* -------- SIDEBAR / TOPBAR -------- */
+
+type SidebarProps = {
+  currentPage: Page;
+  onChangePage: (page: Page) => void;
+};
+
+const navItems: {
+  label: string;
+  key: Page | "history" | "settings" | "billing";
+}[] = [
+  { label: "Overview", key: "overview" },
+  { label: "Supplier Links", key: "links" },
+  { label: "Restock Alerts", key: "history" },
+  { label: "History", key: "history" },
+  { label: "Settings", key: "settings" },
+  { label: "Billing", key: "billing" },
+];
+
+function Sidebar({ currentPage, onChangePage }: SidebarProps) {
+  return (
+    <aside className="sidebar">
+      <div className="logo-block">
+        <div className="logo-icon">🦍</div>
+        <div>
+          <div className="logo-title">RESTOCKING</div>
+          <div className="logo-sub">Restock before everyone else.</div>
+        </div>
+      </div>
+      <nav className="nav">
+        {navItems.map((item) => {
+          const isRealPage = item.key === "overview" || item.key === "links";
+          const isActive = currentPage === item.key;
+          return (
+            <button
+              key={item.label}
+              className={"nav-item" + (isActive && isRealPage ? " active" : "")}
+              onClick={() => {
+                if (isRealPage) onChangePage(item.key as Page);
+              }}
+              type="button"
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="sidebar-footer">
+        © {new Date().getFullYear()} RestocKING
+      </div>
+    </aside>
+  );
 }
 
-.stat-value {
-  font-size: 22px;
-  font-weight: 600;
-  margin-top: 4px;
+type TopbarProps = { currentPage: Page };
+
+function Topbar({ currentPage }: TopbarProps) {
+  const label = currentPage === "overview" ? "Overview" : "Supplier Links";
+
+  return (
+    <header className="topbar">
+      <div className="breadcrumb">
+        Dashboard / <span>{label}</span>
+      </div>
+      <div className="topbar-right">
+        <button className="btn-secondary">Get Early Access Link</button>
+        <div className="avatar">LP</div>
+      </div>
+    </header>
+  );
 }
 
-.stat-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
+/* -------- OVERVIEW SECTION -------- */
+
+function OverviewSection() {
+  return (
+    <>
+      <div className="page-header">
+        <h1>Restock Overview</h1>
+        <p>
+          Monitor supplier restocks, act before everyone else and keep your FBA
+          always stocked.
+        </p>
+      </div>
+
+      <div className="stats-grid">
+        <StatCard label="Active URLs" value="128" description="Links monitored" />
+        <StatCard
+          label="Restocks (7 days)"
+          value="46"
+          description="High-demand products"
+        />
+        <StatCard label="Suppliers" value="9" description="Active suppliers" />
+        <StatCard label="Alerts sent" value="312" description="Notifications" />
+      </div>
+
+      <RestockTable />
+    </>
+  );
 }
 
-/* TABLE */
+/* -------- SUPPLIER LINKS + MODAL -------- */
 
-.table-wrapper {
-  margin-top: 22px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.5);
-  overflow: hidden;
+type SupplierLink = {
+  id?: string;
+  supplier: string;
+  label: string;        // list_name no banco (department)
+  subcategory: string;  // NOVO campo no banco
+  url: string;
+  products: string;
+  links: number;
+  lastRestock: string;
+  status: "Stable" | "Hot" | "Watch";
+  priority: "High" | "Medium" | "Low";
+};
+
+type NewSupplierLinkInput = {
+  supplier: string;
+  label: string;        // department
+  subcategory: string;  // subcategoria
+  url: string;
+  products: string;
+  priority: SupplierLink["priority"];
+  status: SupplierLink["status"];
+  links?: number;
+};
+
+type AddLinkModalProps = {
+  open: boolean;
+  mode: "add" | "edit";
+  initialData?: Partial<NewSupplierLinkInput>;
+  onClose: () => void;
+  onSave: (data: NewSupplierLinkInput) => void;
+};
+
+function AddLinkModal({
+  open,
+  mode,
+  initialData,
+  onClose,
+  onSave,
+}: AddLinkModalProps) {
+  const [form, setForm] = useState({
+    supplier: "",
+    label: "",        // department
+    subcategory: "",  // subcategory
+    url: "",
+    products: "",
+    priority: "High" as SupplierLink["priority"],
+    status: "Hot" as SupplierLink["status"],
+    links: "0",
+  });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        supplier: initialData?.supplier ?? "",
+        label: initialData?.label ?? "",
+        subcategory: initialData?.subcategory ?? "",
+        url: initialData?.url ?? "",
+        products: initialData?.products ?? "",
+        priority: (initialData?.priority ?? "High") as SupplierLink["priority"],
+        status: (initialData?.status ?? "Hot") as SupplierLink["status"],
+        links: String(initialData?.links ?? 0),
+      });
+    }
+  }, [open, initialData]);
+
+  if (!open) return null;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const linksNumber = Number(form.links || 0);
+
+    onSave({
+      supplier: form.supplier.trim(),
+      label: form.label.trim(),
+      subcategory: form.subcategory.trim(),
+      url: form.url.trim(),
+      products: form.products.trim(),
+      priority: form.priority,
+      status: form.status,
+      links: Number.isNaN(linksNumber) ? 0 : linksNumber,
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">
+              {mode === "add" ? "Add new supplier link" : "Edit supplier link"}
+            </div>
+            <p className="modal-subtitle">
+              Keep URLs focused on your best suppliers. You can edit later.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-field">
+              <label>Supplier</label>
+              <input
+                type="text"
+                value={form.supplier}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, supplier: e.target.value }))
+                }
+                required
+                placeholder="KeHE, Nandansons..."
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Products</label>
+              <input
+                type="text"
+                value={form.products}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, products: e.target.value }))
+                }
+                required
+                placeholder="Snacks, Fragrances..."
+              />
+            </div>
+
+            {/* ✅ AMAZON DEPARTMENT */}
+            <div className="form-field form-field-full">
+              <label>Amazon Department</label>
+              <select
+                value={form.label}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, label: e.target.value }))
+                }
+                required
+              >
+                <option value="" disabled>
+                  Select a department...
+                </option>
+                {AMAZON_DEPARTMENTS.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ✅ SUBCATEGORY (autocomplete livre) */}
+            <div className="form-field form-field-full">
+              <label>Amazon Subcategory (optional)</label>
+              <input
+                type="text"
+                value={form.subcategory}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, subcategory: e.target.value }))
+                }
+                placeholder="ex: Grocery > Snacks > Protein Bars"
+                list="amazon-subcats"
+              />
+              <datalist id="amazon-subcats">
+                <option value="Grocery & Gourmet Food > Snack Foods > Nutrition Bars" />
+                <option value="Beauty & Personal Care > Fragrance > Men" />
+                <option value="Health & Household > Household Supplies" />
+                <option value="Home & Kitchen > Storage & Organization" />
+              </datalist>
+            </div>
+
+            <div className="form-field form-field-full">
+              <label>URL</label>
+              <input
+                type="url"
+                value={form.url}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, url: e.target.value }))
+                }
+                required
+                placeholder="https://portal.kehe.com/..."
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Priority</label>
+              <select
+                value={form.priority}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    priority: e.target.value as SupplierLink["priority"],
+                  }))
+                }
+              >
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            <div className="form-field">
+              <label>Status</label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    status: e.target.value as SupplierLink["status"],
+                  }))
+                }
+              >
+                <option value="Hot">Hot</option>
+                <option value="Stable">Stable</option>
+                <option value="Watch">Watch</option>
+              </select>
+            </div>
+
+            <div className="form-field">
+              <label>Links (optional)</label>
+              <input
+                type="number"
+                min={0}
+                value={form.links}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, links: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              {mode === "add" ? "Save link" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-.table-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+function SupplierLinksSection() {
+  const [data, setData] = useState<SupplierLink[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<SupplierLink | null>(null);
+  const [loading, setLoading] = useState(true);
 
-.table-header h2 {
-  margin: 0;
-  font-size: 14px;
-}
+  async function fetchLinks() {
+    setLoading(true);
 
-.table-header p {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
+    const { data, error } = await supabase
+      .from("supplier_links")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-.table-wrapper table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
+    if (error) {
+      console.error("Fetch supplier_links error:", error.message);
+      setData([]);
+    } else {
+      const mapped =
+        (data ?? []).map((r: any) => ({
+          id: r.id,
+          supplier: r.supplier ?? "",
+          label: r.list_name ?? "",
+          subcategory: r.subcategory ?? "",
+          url: r.url ?? "",
+          products: r.products ?? "",
+          priority: (r.priority ?? "High") as SupplierLink["priority"],
+          status: (r.status ?? "Stable") as SupplierLink["status"],
+          links: r.links_count ?? 0,
+          lastRestock: r.last_restock ?? "Not checked yet",
+        })) as SupplierLink[];
 
-.table-wrapper thead {
-  background: rgba(255, 255, 255, 0.03);
-}
+      setData(mapped);
+    }
 
-.table-wrapper th,
-.table-wrapper td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.table-wrapper th {
-  text-align: left;
-  font-weight: 500;
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.table-wrapper td {
-  color: var(--text-main);
-}
-
-.table-wrapper tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.right {
-  text-align: right;
-}
-
-.badge {
-  border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.badge-hot {
-  background: rgba(248, 113, 113, 0.18);
-  color: #fecaca;
-}
-
-.badge-watch {
-  background: rgba(251, 191, 36, 0.18);
-  color: #fde68a;
-}
-
-.badge-normal {
-  background: rgba(16, 185, 129, 0.18);
-  color: #a7f3d0;
-}
-
-/* RESPONSIVE */
-
-@media (max-width: 900px) {
-  .app-root {
-    flex-direction: column;
+    setLoading(false);
   }
 
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-  }
+  useEffect(() => {
+    fetchLinks();
+  }, []);
 
-  .nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
+  const getStatusBadgeClass = (status: SupplierLink["status"]) => {
+    if (status === "Hot") return "badge badge-hot";
+    if (status === "Watch") return "badge badge-watch";
+    return "badge badge-normal";
+  };
 
-  .main-content {
-    padding: 14px;
-  }
+  const handleAddLink = async (payload: NewSupplierLinkInput) => {
+    const linksNumber = payload.links ?? 0;
 
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+    const insertPayload = {
+      supplier: payload.supplier,
+      list_name: payload.label,          // department
+      subcategory: payload.subcategory,  // subcategory
+      url: payload.url,
+      products: payload.products,
+      priority: payload.priority,
+      status: payload.status,
+      links_count: linksNumber,
+    };
+
+    const { error } = await supabase
+      .from("supplier_links")
+      .insert(insertPayload);
+
+    if (error) {
+      alert("Erro ao salvar no Supabase: " + error.message);
+      return;
+    }
+
+    fetchLinks();
+  };
+
+  const handleUpdateLink = async (payload: NewSupplierLinkInput) => {
+    if (!editingRow?.id) return;
+
+    const linksNumber = payload.links ?? 0;
+
+    const updatePayload = {
+      supplier: payload.supplier,
+      list_name: payload.label,
+      subcategory: payload.subcategory,
+      url: payload.url,
+      products: payload.products,
+      priority: payload.priority,
+      status: payload.status,
+      links_count: linksNumber,
+    };
+
+    const { error } = await supabase
+      .from("supplier_links")
+      .update(updatePayload)
+      .eq("id", editingRow.id);
+
+    if (error) {
+      alert("Erro ao atualizar no Supabase: " + error.message);
+      return;
+    }
+
+    setEditingRow(null);
+    fetchLinks();
+  };
+
+  const handleDeleteLink = async (id?: string) => {
+    if (!id) return;
+
+    const ok = window.confirm("Delete this supplier link?");
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("supplier_links")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.log("DELETE ERROR:", error);
+      alert(error.message);
+      return;
+    }
+
+    setData((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const openAddModal = () => {
+    setEditingRow(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (row: SupplierLink) => {
+    setEditingRow(row);
+    setIsModalOpen(true);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>Supplier Links</h1>
+        <p>
+          Manage all supplier URLs that RestocKING monitors for restocks, price
+          changes and availability.
+        </p>
+      </div>
+
+      <div className="toolbar">
+        <div className="toolbar-left">
+          <h2>Monitored URLs</h2>
+          <p>
+            {data.length} supplier sources connected. Keep links clean and
+            focused on your best-sellers.
+          </p>
+        </div>
+        <div className="toolbar-right">
+          <button className="btn-secondary">Import from CSV</button>
+          <button className="btn-primary" type="button" onClick={openAddModal}>
+            + Add new link
+          </button>
+        </div>
+      </div>
+
+      <div className="toolbar-tags">
+        <div className="tag">
+          <span className="tag-dot" />
+          High priority
+        </div>
+        <div className="tag">
+          <span className="tag-dot warning" />
+          Watch closely
+        </div>
+        <div className="tag">
+          <span className="tag-dot danger" />
+          Risk of going OOS
+        </div>
+      </div>
+
+      <div className="table-wrapper">
+        <div className="table-header">
+          <div>
+            <h2>All Supplier Links</h2>
+            <p>Each URL is scanned and converted into restock alerts.</p>
+          </div>
+          <button className="btn-secondary">Filters</button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 20 }}>Loading...</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Supplier</th>
+                <th>Amazon Department</th>
+                <th>Subcategory</th>
+                <th>URL</th>
+                <th>Products</th>
+                <th>Priority</th>
+                <th>Links</th>
+                <th>Last Restock</th>
+                <th className="right">Status</th>
+                <th className="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row, idx) => (
+                <tr key={row.id ?? idx}>
+                  <td>{row.supplier}</td>
+                  <td>{row.label}</td>
+                  <td>{row.subcategory || "-"}</td>
+
+                  {/* ✅ URL clicável */}
+                  <td>
+                    <a
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="url-cell clickable-url"
+                      title="Open URL"
+                    >
+                      {row.url}
+                    </a>
+                  </td>
+
+                  <td>{row.products}</td>
+                  <td>{row.priority}</td>
+                  <td>{row.links}</td>
+                  <td>{row.lastRestock}</td>
+                  <td className="right">
+                    <span className={getStatusBadgeClass(row.status)}>
+                      {row.status}
+                    </span>
+                  </td>
+
+                  <td className="right">
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <button
+                        onClick={() => openEditModal(row)}
+                        className="action-btn edit"
+                        title="Edit"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "transparent",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✏️
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteLink(row.id)}
+                        className="action-btn delete"
+                        title="Delete"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "transparent",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <AddLinkModal
+        open={isModalOpen}
+        mode={editingRow ? "edit" : "add"}
+        initialData={
+          editingRow
+            ? {
+                supplier: editingRow.supplier,
+                label: editingRow.label,
+                subcategory: editingRow.subcategory,
+                url: editingRow.url,
+                products: editingRow.products,
+                priority: editingRow.priority,
+                status: editingRow.status,
+                links: editingRow.links,
+              }
+            : undefined
+        }
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingRow(null);
+        }}
+        onSave={editingRow ? handleUpdateLink : handleAddLink}
+      />
+    </>
+  );
 }
-.btn-primary {
-  border-radius: 999px;
-  padding: 6px 14px;
-  background: linear-gradient(to right, #7c3aed, #ec4899);
-  border: none;
-  color: white;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.6);
-}
 
-.btn-primary:hover {
-  opacity: 0.96;
-}
+/* -------- ROOT APP -------- */
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-  margin-bottom: 12px;
-}
+export default function App() {
+  const [page, setPage] = useState<Page>("overview");
 
-.toolbar-left h2 {
-  margin: 0;
-  font-size: 14px;
-}
-
-.toolbar-left p {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.toolbar-right {
-  display: flex;
-  gap: 8px;
-}
-
-.toolbar-tags {
-  margin-bottom: 10px;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  padding: 3px 10px;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-right: 6px;
-}
-
-.tag-dot {
-  height: 6px;
-  width: 6px;
-  border-radius: 999px;
-  margin-right: 6px;
-  background: #22c55e;
-}
-
-.tag-dot.warning {
-  background: #facc15;
-}
-
-.tag-dot.danger {
-  background: #ef4444;
-}
-
-.url-cell {
-  max-width: 360px;
-  display: inline-block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #a5b4fc;
-}
-/* ---------- Modal styles ---------- */
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.modal {
-  background: #070718;
-  border-radius: 16px;
-  padding: 20px 24px 18px;
-  width: 520px;
-  max-width: 90%;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
-  border: 1px solid #272744;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.modal-title {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.modal-subtitle {
-  font-size: 13px;
-  color: #9ca3af;
-  margin-top: 4px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 16px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.form-field-full {
-  grid-column: 1 / -1;
-}
-
-.form-field label {
-  color: #e5e7eb;
-  font-weight: 500;
-}
-
-.form-field input,
-.form-field select {
-  background: #050514;
-  border-radius: 10px;
-  border: 1px solid #272744;
-  padding: 8px 10px;
-  color: #f9fafb;
-  font-size: 13px;
-  outline: none;
-}
-
-.form-field input:focus,
-.form-field select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 1px #4f46e5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid #374151;
-  color: #e5e7eb;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.btn-ghost:hover {
-  background: #111827;
-}
-.clickable-url{
-  text-decoration: underline;
-  cursor: pointer;
-  color: inherit;
-  opacity: 0.9;
-}
-
-.clickable-url:hover{
-  opacity: 1;
+  return (
+    <div className="app-root">
+      <Sidebar currentPage={page} onChangePage={setPage} />
+      <div className="main-area">
+        <Topbar currentPage={page} />
+        <main className="main-content">
+          {page === "overview" && <OverviewSection />}
+          {page === "links" && <SupplierLinksSection />}
+        </main>
+      </div>
+    </div>
+  );
 }

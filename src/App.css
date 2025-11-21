@@ -524,3 +524,13 @@ body {
 .btn-ghost:hover {
   background: #111827;
 }
+.clickable-url{
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.clickable-url:hover{
+  opacity: 1;
+}

@@ -233,11 +233,19 @@ type NewSupplierLinkInput = {
 
 type AddLinkModalProps = {
   open: boolean;
+  mode: "add" | "edit";
+  initialData?: Partial<NewSupplierLinkInput>;
   onClose: () => void;
   onSave: (data: NewSupplierLinkInput) => void;
 };
 
-function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
+function AddLinkModal({
+  open,
+  mode,
+  initialData,
+  onClose,
+  onSave,
+}: AddLinkModalProps) {
   const [form, setForm] = useState({
     supplier: "",
     label: "",
@@ -251,16 +259,16 @@ function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
   useEffect(() => {
     if (open) {
       setForm({
-        supplier: "",
-        label: "",
-        url: "",
-        products: "",
-        priority: "High",
-        status: "Hot",
-        links: "0",
+        supplier: initialData?.supplier ?? "",
+        label: initialData?.label ?? "",
+        url: initialData?.url ?? "",
+        products: initialData?.products ?? "",
+        priority: (initialData?.priority ?? "High") as SupplierLink["priority"],
+        status: (initialData?.status ?? "Hot") as SupplierLink["status"],
+        links: String(initialData?.links ?? 0),
       });
     }
-  }, [open]);
+  }, [open, initialData]);
 
   if (!open) return null;
 
@@ -291,7 +299,9 @@ function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
       >
         <div className="modal-header">
           <div>
-            <div className="modal-title">Add new supplier link</div>
+            <div className="modal-title">
+              {mode === "add" ? "Add new supplier link" : "Edit supplier link"}
+            </div>
             <p className="modal-subtitle">
               Keep URLs focused on your best suppliers. You can edit later.
             </p>
@@ -396,7 +406,7 @@ function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
               Cancel
             </button>
             <button type="submit" className="btn-primary">
-              Save link
+              {mode === "add" ? "Save link" : "Save changes"}
             </button>
           </div>
         </form>
@@ -408,6 +418,7 @@ function AddLinkModal({ open, onClose, onSave }: AddLinkModalProps) {
 function SupplierLinksSection() {
   const [data, setData] = useState<SupplierLink[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<SupplierLink | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function fetchLinks() {
@@ -476,6 +487,35 @@ function SupplierLinksSection() {
     fetchLinks();
   };
 
+  const handleUpdateLink = async (payload: NewSupplierLinkInput) => {
+    if (!editingRow?.id) return;
+
+    const linksNumber = payload.links ?? 0;
+
+    const updatePayload = {
+      supplier: payload.supplier,
+      list_name: payload.label,
+      url: payload.url,
+      products: payload.products,
+      priority: payload.priority,
+      status: payload.status,
+      links_count: linksNumber,
+    };
+
+    const { error } = await supabase
+      .from("supplier_links")
+      .update(updatePayload)
+      .eq("id", editingRow.id);
+
+    if (error) {
+      alert("Erro ao atualizar no Supabase: " + error.message);
+      return;
+    }
+
+    setEditingRow(null);
+    fetchLinks();
+  };
+
   // ✅ DELETE
   const handleDeleteLink = async (id?: string) => {
     if (!id) return;
@@ -494,8 +534,17 @@ function SupplierLinksSection() {
       return;
     }
 
-    // remove na tela sem reload
     setData((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const openAddModal = () => {
+    setEditingRow(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (row: SupplierLink) => {
+    setEditingRow(row);
+    setIsModalOpen(true);
   };
 
   return (
@@ -518,11 +567,7 @@ function SupplierLinksSection() {
         </div>
         <div className="toolbar-right">
           <button className="btn-secondary">Import from CSV</button>
-          <button
-            className="btn-primary"
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-          >
+          <button className="btn-primary" type="button" onClick={openAddModal}>
             + Add new link
           </button>
         </div>
@@ -589,20 +634,43 @@ function SupplierLinksSection() {
 
                   {/* ✅ ACTIONS */}
                   <td className="right">
-                    <button
-                      onClick={() => handleDeleteLink(row.id)}
-                      className="action-btn delete"
-                      title="Delete"
+                    <div
                       style={{
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        background: "transparent",
-                        padding: "6px 10px",
-                        borderRadius: 10,
-                        cursor: "pointer",
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
                       }}
                     >
-                      🗑️
-                    </button>
+                      <button
+                        onClick={() => openEditModal(row)}
+                        className="action-btn edit"
+                        title="Edit"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "transparent",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✏️
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteLink(row.id)}
+                        className="action-btn delete"
+                        title="Delete"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: "transparent",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -613,8 +681,25 @@ function SupplierLinksSection() {
 
       <AddLinkModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleAddLink}
+        mode={editingRow ? "edit" : "add"}
+        initialData={
+          editingRow
+            ? {
+                supplier: editingRow.supplier,
+                label: editingRow.label,
+                url: editingRow.url,
+                products: editingRow.products,
+                priority: editingRow.priority,
+                status: editingRow.status,
+                links: editingRow.links,
+              }
+            : undefined
+        }
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingRow(null);
+        }}
+        onSave={editingRow ? handleUpdateLink : handleAddLink}
       />
     </>
   );
@@ -638,3 +723,4 @@ export default function App() {
     </div>
   );
 }
+

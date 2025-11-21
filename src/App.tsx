@@ -613,8 +613,7 @@ function SupplierLinksSection() {
       <div className="page-header">
         <h1>Supplier Links</h1>
         <p>
-          Manage all supplier URLs that RestocKING monitors for restocks,
-          price changes and availability.
+          Manage all supplier URLs you want RestocKING to monitor. By adding your links here, you’ll receive instant alerts the moment stock returns — giving you the advantage of restocking ahead of competitors.
         </p>
       </div>
 

@@ -745,6 +745,29 @@ tr:last-child td {
   text-align: right;
   white-space: nowrap;
 }
+/* LIMPA fundo roxo que está aparecendo */
+.table-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Garante que o fundo principal seja neutro */
+.main-content {
+  background: #0d0d0f !important;
+}
+
+/* Também garantir que tabelas não puxem roxo */
+table {
+  background: transparent !important;
+}
+
+table tr {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+table tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
 
 
 

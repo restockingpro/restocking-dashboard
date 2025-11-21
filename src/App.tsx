@@ -12,6 +12,36 @@ const supabaseAnonKey =
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+/* --------- AMAZON DEPARTMENTS (TOP LEVEL) --------- */
+const AMAZON_DEPARTMENTS = [
+  "Appliances",
+  "Arts, Crafts & Sewing",
+  "Automotive",
+  "Baby",
+  "Beauty & Personal Care",
+  "Books",
+  "Camera & Photo",
+  "Cell Phones & Accessories",
+  "Clothing, Shoes & Jewelry",
+  "Collectibles & Fine Art",
+  "Computers",
+  "Electronics",
+  "Grocery & Gourmet Food",
+  "Health & Household",
+  "Home & Kitchen",
+  "Industrial & Scientific",
+  "Kitchen & Dining",
+  "Movies & TV",
+  "Musical Instruments",
+  "Office Products",
+  "Patio, Lawn & Garden",
+  "Pet Supplies",
+  "Sports & Outdoors",
+  "Tools & Home Improvement",
+  "Toys & Games",
+  "Video Games",
+] as const;
+
 /* --------- SMALL COMPONENTS --------- */
 
 type StatCardProps = {
@@ -212,7 +242,8 @@ function OverviewSection() {
 type SupplierLink = {
   id?: string;
   supplier: string;
-  label: string; // list_name no banco
+  label: string;        // list_name no banco (department)
+  subcategory: string;  // NOVO campo no banco
   url: string;
   products: string;
   links: number;
@@ -223,7 +254,8 @@ type SupplierLink = {
 
 type NewSupplierLinkInput = {
   supplier: string;
-  label: string;
+  label: string;        // department
+  subcategory: string;  // subcategoria
   url: string;
   products: string;
   priority: SupplierLink["priority"];
@@ -248,7 +280,8 @@ function AddLinkModal({
 }: AddLinkModalProps) {
   const [form, setForm] = useState({
     supplier: "",
-    label: "",
+    label: "",        // department
+    subcategory: "",  // subcategory
     url: "",
     products: "",
     priority: "High" as SupplierLink["priority"],
@@ -261,6 +294,7 @@ function AddLinkModal({
       setForm({
         supplier: initialData?.supplier ?? "",
         label: initialData?.label ?? "",
+        subcategory: initialData?.subcategory ?? "",
         url: initialData?.url ?? "",
         products: initialData?.products ?? "",
         priority: (initialData?.priority ?? "High") as SupplierLink["priority"],
@@ -279,6 +313,7 @@ function AddLinkModal({
     onSave({
       supplier: form.supplier.trim(),
       label: form.label.trim(),
+      subcategory: form.subcategory.trim(),
       url: form.url.trim(),
       products: form.products.trim(),
       priority: form.priority,
@@ -293,9 +328,7 @@ function AddLinkModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal"
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <div>
@@ -322,6 +355,7 @@ function AddLinkModal({
                 placeholder="KeHE, Nandansons..."
               />
             </div>
+
             <div className="form-field">
               <label>Products</label>
               <input
@@ -334,28 +368,61 @@ function AddLinkModal({
                 placeholder="Snacks, Fragrances..."
               />
             </div>
+
+            {/* ✅ AMAZON DEPARTMENT */}
             <div className="form-field form-field-full">
-              <label>List name</label>
-              <input
-                type="text"
+              <label>Amazon Department</label>
+              <select
                 value={form.label}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, label: e.target.value }))
                 }
                 required
-                placeholder="Snacks & Grocery – Main list"
-              />
+              >
+                <option value="" disabled>
+                  Select a department...
+                </option>
+                {AMAZON_DEPARTMENTS.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {/* ✅ SUBCATEGORY (autocomplete livre) */}
+            <div className="form-field form-field-full">
+              <label>Amazon Subcategory (optional)</label>
+              <input
+                type="text"
+                value={form.subcategory}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, subcategory: e.target.value }))
+                }
+                placeholder="ex: Grocery > Snacks > Protein Bars"
+                list="amazon-subcats"
+              />
+              <datalist id="amazon-subcats">
+                <option value="Grocery & Gourmet Food > Snack Foods > Nutrition Bars" />
+                <option value="Beauty & Personal Care > Fragrance > Men" />
+                <option value="Health & Household > Household Supplies" />
+                <option value="Home & Kitchen > Storage & Organization" />
+              </datalist>
+            </div>
+
             <div className="form-field form-field-full">
               <label>URL</label>
               <input
                 type="url"
                 value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, url: e.target.value }))
+                }
                 required
                 placeholder="https://portal.kehe.com/..."
               />
             </div>
+
             <div className="form-field">
               <label>Priority</label>
               <select
@@ -372,6 +439,7 @@ function AddLinkModal({
                 <option value="Low">Low</option>
               </select>
             </div>
+
             <div className="form-field">
               <label>Status</label>
               <select
@@ -388,6 +456,7 @@ function AddLinkModal({
                 <option value="Watch">Watch</option>
               </select>
             </div>
+
             <div className="form-field">
               <label>Links (optional)</label>
               <input
@@ -438,6 +507,7 @@ function SupplierLinksSection() {
           id: r.id,
           supplier: r.supplier ?? "",
           label: r.list_name ?? "",
+          subcategory: r.subcategory ?? "",
           url: r.url ?? "",
           products: r.products ?? "",
           priority: (r.priority ?? "High") as SupplierLink["priority"],
@@ -467,7 +537,8 @@ function SupplierLinksSection() {
 
     const insertPayload = {
       supplier: payload.supplier,
-      list_name: payload.label,
+      list_name: payload.label,          // department
+      subcategory: payload.subcategory,  // subcategory
       url: payload.url,
       products: payload.products,
       priority: payload.priority,
@@ -495,6 +566,7 @@ function SupplierLinksSection() {
     const updatePayload = {
       supplier: payload.supplier,
       list_name: payload.label,
+      subcategory: payload.subcategory,
       url: payload.url,
       products: payload.products,
       priority: payload.priority,
@@ -516,7 +588,6 @@ function SupplierLinksSection() {
     fetchLinks();
   };
 
-  // ✅ DELETE
   const handleDeleteLink = async (id?: string) => {
     if (!id) return;
 
@@ -604,7 +675,8 @@ function SupplierLinksSection() {
             <thead>
               <tr>
                 <th>Supplier</th>
-                <th>List name</th>
+                <th>Amazon Department</th>
+                <th>Subcategory</th>
                 <th>URL</th>
                 <th>Products</th>
                 <th>Priority</th>
@@ -619,9 +691,21 @@ function SupplierLinksSection() {
                 <tr key={row.id ?? idx}>
                   <td>{row.supplier}</td>
                   <td>{row.label}</td>
+                  <td>{row.subcategory || "-"}</td>
+
+                  {/* ✅ URL clicável */}
                   <td>
-                    <span className="url-cell">{row.url}</span>
+                    <a
+                      href={row.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="url-cell clickable-url"
+                      title="Open URL"
+                    >
+                      {row.url}
+                    </a>
                   </td>
+
                   <td>{row.products}</td>
                   <td>{row.priority}</td>
                   <td>{row.links}</td>
@@ -632,7 +716,6 @@ function SupplierLinksSection() {
                     </span>
                   </td>
 
-                  {/* ✅ ACTIONS */}
                   <td className="right">
                     <div
                       style={{
@@ -687,6 +770,7 @@ function SupplierLinksSection() {
             ? {
                 supplier: editingRow.supplier,
                 label: editingRow.label,
+                subcategory: editingRow.subcategory,
                 url: editingRow.url,
                 products: editingRow.products,
                 priority: editingRow.priority,
@@ -723,4 +807,3 @@ export default function App() {
     </div>
   );
 }
-

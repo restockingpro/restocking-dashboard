@@ -89,6 +89,9 @@ body {
   color: var(--text-muted);
   text-decoration: none;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  text-align: left;
 }
 
 .nav-item:hover {
@@ -163,6 +166,8 @@ body {
   font-weight: 600;
 }
 
+/* BUTTONS */
+
 .btn-secondary {
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -175,6 +180,59 @@ body {
 
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.07);
+}
+
+.btn-primary {
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: linear-gradient(to right, #7c3aed, #ec4899);
+  border: none;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(124, 58, 237, 0.5);
+}
+
+.btn-primary:hover {
+  opacity: 0.95;
+}
+
+.btn-primary-big {
+  border-radius: 12px;
+  padding: 10px 22px;
+  background: linear-gradient(to right, #7c3aed, #c084fc);
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.65);
+  transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary-big:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 0 30px rgba(124, 58, 237, 0.85);
+}
+
+.btn-primary-big:active {
+  transform: scale(0.98);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #374151;
+  color: #e5e7eb;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background: #111827;
 }
 
 .main-content {
@@ -190,6 +248,33 @@ body {
   margin-top: 4px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* TOOLBAR */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.toolbar-left h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.toolbar-left p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* STATS GRID */
@@ -318,6 +403,25 @@ body {
   color: #a7f3d0;
 }
 
+/* URL cell */
+
+.url-cell {
+  max-width: 360px;
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #a5b4fc;
+}
+
+.clickable-url {
+  text-decoration: none;
+}
+.clickable-url:hover {
+  text-decoration: underline;
+  color: #c4b5fd;
+}
+
 /* ---------- Modal styles ---------- */
 
 .modal-backdrop {
@@ -406,28 +510,14 @@ body {
   margin-top: 4px;
 }
 
-.btn-ghost {
-  background: transparent;
-  border: 1px solid #374151;
-  color: #e5e7eb;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.btn-ghost:hover {
-  background: #111827;
-}
-
 /* TAGS */
 
-.toolbar-tags{
+.toolbar-tags {
   margin-top: 6px;
   margin-bottom: 10px;
 }
 
-.toolbar-tags .tag{
+.toolbar-tags .tag {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -436,12 +526,28 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   margin-right: 6px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tag-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  margin-right: 6px;
+  background: #22c55e;
+}
+
+.tag-dot.warning {
+  background: #facc15;
+}
+
+.tag-dot.danger {
+  background: #ef4444;
 }
 
 /* ===== FILTER BAR (COMPACT PREMIUM) ===== */
 
-.filter-bar{
+.filter-bar {
   margin-top: 12px;
   margin-bottom: 12px;
   display: flex;
@@ -449,7 +555,7 @@ body {
   align-items: flex-end;
   flex-wrap: wrap;
 
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   padding: 10px;
   border-radius: 14px;
@@ -457,7 +563,7 @@ body {
   max-width: 980px;
 }
 
-.filter-item{
+.filter-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -465,76 +571,82 @@ body {
   max-width: 220px;
 }
 
-.filter-item label{
+.filter-item label {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
 }
 
-.filter-bar select{
+.filter-bar select {
   width: 100%;
   height: 36px;
   padding: 7px 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-main);
   outline: none;
   appearance: none;
 }
 
-.filter-bar select:hover{
-  background: rgba(255,255,255,0.08);
+.filter-bar select:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.filter-bar select:focus{
+.filter-bar select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-.filter-bar .btn-ghost{
+.filter-bar .btn-ghost {
   height: 36px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-main);
   font-size: 12px;
-  opacity: .85;
+  opacity: 0.85;
 }
 
-.filter-bar .btn-ghost:hover{
-  background: rgba(255,255,255,0.07);
+.filter-bar .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
   opacity: 1;
 }
 
-@media (max-width: 900px){
-  .filter-bar{
+/* RESPONSIVE */
+
+@media (max-width: 900px) {
+  .app-root {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .main-content {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-bar {
     max-width: 100%;
   }
-  .filter-item{
+
+  .filter-item {
     min-width: 140px;
   }
 }
-.btn-primary-big {
-  border-radius: 12px;
-  padding: 10px 22px;
-  background: linear-gradient(to right, #7c3aed, #c084fc);
-  border: none;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 0 22px rgba(124, 58, 237, 0.55);
-  transition: transform 0.12s ease, opacity 0.15s ease;
-}
 
-.btn-primary-big:hover {
-  opacity: 0.92;
-  transform: scale(1.03);
-}
-
-.btn-primary-big:active {
-  transform: scale(0.98);
-}
